@@ -73,21 +73,22 @@ let directionalLight = new THREE.DirectionalLight( 0xdfebff, 1);
 directionalLight.position.set( 20, 20, 100 );
 scene.add(directionalLight);
 
-let groundGeometry = new THREE.PlaneBufferGeometry(400,800);
+let groundGeometry = new THREE.PlaneBufferGeometry(200,400);
 let groundMaterial = new THREE.MeshLambertMaterial({color:0x000000});
 let ground = new THREE.Mesh( groundGeometry, groundMaterial );
+groundMaterial.side=THREE.DoubleSide;
 
 //add 10x20 grid consisting of horizontal and vertical lines on top of ground to help visualize tetris placements
 let lineGeometry = new THREE.BufferGeometry();
 let lineMaterial = new THREE.LineBasicMaterial( { color: 0x808080 } );
 let vertlinePositions = new Float32Array( 10 * 3 * 2 );//20 lines, each line has 2 points, each point has 3 coordinates
 for ( let i = 0; i < 10; i ++ ) {
-	vertlinePositions[ i * 6 ] = -200 + i * 40; // x
-	vertlinePositions[ i * 6 + 1 ] = -400; // y
+	vertlinePositions[ i * 6 ] = -100 + i * 20; // x
+	vertlinePositions[ i * 6 + 1 ] = -200; // y
 	vertlinePositions[ i * 6 + 2 ] = 0; // z
 
-	vertlinePositions[ i * 6 + 3 ] = -200 + i * 40; // x
-	vertlinePositions[ i * 6 + 4 ] = 400; // y
+	vertlinePositions[ i * 6 + 3 ] = -100 + i * 20; // x
+	vertlinePositions[ i * 6 + 4 ] = 200; // y
 	vertlinePositions[ i * 6 + 5 ] = 0; // z
 }
 lineGeometry.setAttribute( 'position', new THREE.BufferAttribute( vertlinePositions, 3 ) );
@@ -97,12 +98,12 @@ scene.add( vertline );
 
 let horilinePositions = new Float32Array( 20 * 3 * 2 );//20 lines, each line has 2 points, each point has 3 coordinates
 for ( let i = 0; i < 20; i ++ ) {
-	horilinePositions[ i * 6 ] = -200; // x
-	horilinePositions[ i * 6 + 1 ] = -400 + i * 40; // y
+	horilinePositions[ i * 6 ] = -100; // x
+	horilinePositions[ i * 6 + 1 ] = -200 + i * 20; // y
 	horilinePositions[ i * 6 + 2 ] = 0; // z
 
-	horilinePositions[ i * 6 + 3 ] = 200; // x
-	horilinePositions[ i * 6 + 4 ] = -400 + i * 40; // y
+	horilinePositions[ i * 6 + 3 ] = 100; // x
+	horilinePositions[ i * 6 + 4 ] = -200 + i * 20; // y
 	horilinePositions[ i * 6 + 5 ] = 0; // z
 }
 lineGeometry = new THREE.BufferGeometry();
@@ -118,9 +119,9 @@ scene.add( ground );
 
 
 //*********************
-//Add cannons
+//Add blocks
 //*********************
-//each cannon will have a base (a box) that can rotate horizontally, and a body (a truncated cone that has a sphere in one end) that can tilt up or down. The body will be children of the base in the scene graph, so that rotation of the box applies automatically to the body. For more info on scene graphs see https://threejsfundamentals.org/threejs/lessons/threejs-scenegraph.html
+//The body will be children of the base in the scene graph, so that rotation of the box applies automatically to the body. For more info on scene graphs see https://threejsfundamentals.org/threejs/lessons/threejs-scenegraph.html
 
 //this example shows how to programmatically create simple shapes. More complex models should probably be designed in external software and imported.
 //note that we can reuse geometries and materials, and only change the position and rotation of the object(mesh) to create multiple copies of something.
@@ -138,56 +139,159 @@ let cannonMaterial=new THREE.MeshStandardMaterial( {color: 0xffffaa, metalness:0
 */
 
 
-let cannonMaterial=new THREE.MeshStandardMaterial( {color: 0xffffaa, metalness:0.8,roughness:0.6});
-cannonMaterial.side=THREE.DoubleSide;//to prevent some parts from disappearing when you look into the cannon's opening...
+//Tetris I block
+let IblockMaterial = new THREE.MeshStandardMaterial({ color: 0x00FFFF});
+IblockMaterial.side = THREE.DoubleSide;
+let IblockGeometry = new THREE.BoxBufferGeometry(80, 20, 20);
+let Iblock1 = new THREE.Mesh(IblockGeometry, IblockMaterial);
+Iblock1.position.set(150, 190, 10);
 
-let cannonBaseMaterial=new THREE.MeshStandardMaterial( {color: 0xddddaa, metalness:0.1,roughness:0.9});
-let cannonBaseGeometry=new THREE.BoxBufferGeometry( 20, 40, 10 );
-let cannonSideGeometry=new THREE.BoxBufferGeometry( 4, 40, 15 );
+// Add lines to make the I block appear as 4 even cubes (Update to add lines to all sides of the I block)
+let BlockLineMaterial = new THREE.LineBasicMaterial({ color: 0x808080 });
+let IblockLineGeometry = new THREE.BufferGeometry();
+let IblockLinePositions = new Float32Array(4 * 3 * 2);
 
-//this simple cannon tube is a truncated cone that ends in a sphere, and can be defined by a lathed shape. See https://threejs.org/docs/#api/en/geometries/LatheBufferGeometry
-//extra credit todo: load or even create your own better cannon model!
-let cannonTubePoints = [];
-let cannonEndRadius=5,cannonBodyOffset=15;//make the origin of the cannon body be in the middle, not at the end, so it rotates more realistically
-let cannonMainLength=35,cannonRadiusDiff=2,cannonOpeningLength=5,cannonOpeningRadiusDiff=1;
-let cannonballStartingLength=cannonEndRadius+cannonMainLength+cannonOpeningLength-cannonBodyOffset;//where in the body will the cannonball appear later
-for ( let i=0;i<10;i++) {
-	cannonTubePoints.push( new THREE.Vector2(cannonEndRadius*Math.sin((Math.PI/2)*i/10),cannonEndRadius*(1-Math.cos((Math.PI/2)*i/10))-cannonBodyOffset));
-	//1/4 of a circle, makes half a sphere; the x value is the distance from the axis, and the y value is the horizontal position along the axis.
-}
-for (let i=0;i<10;i++) {//add points for the main part of the body
-	cannonTubePoints.push( new THREE.Vector2(cannonEndRadius-cannonRadiusDiff*i/10, cannonMainLength/10*i+cannonEndRadius-cannonBodyOffset) );
-}
-for (let i=0;i<10;i++) {//add points for the opening part of the body
-	cannonTubePoints.push( new THREE.Vector2(cannonEndRadius-cannonRadiusDiff+cannonOpeningRadiusDiff*i/10, cannonOpeningLength*i/10+cannonMainLength+cannonEndRadius-cannonBodyOffset) );
-}
-let cannonBodyGeometry=new THREE.LatheBufferGeometry( cannonTubePoints );
+for (let i = 0; i < 4; i++) {
+	let x = -40 + i * 20; // Divide the I block into 4 segments
+	IblockLinePositions[i * 6] = x; // Start x
+	IblockLinePositions[i * 6 + 1] = -10; // Start y
+	IblockLinePositions[i * 6 + 2] = 10; // Start z
 
-
-function addCannon(position,quaternion){//THREE.js uses quaternions to represent rotation. You can also set the rotation instead.
-	let base=new THREE.Mesh(cannonBaseGeometry,cannonBaseMaterial);
-	base.position.copy(position);
-	base.quaternion.copy(quaternion);
-	scene.add(base);
-	let body = new THREE.Mesh( cannonBodyGeometry, cannonMaterial );
-	body.position.set(0,-10,20);
-	base.add(body);
-	base.body=body;//keep a reference to the cannon's body so later we can manipulate it independently.
-	//add side panels so the body is not obviously floating
-	let side1=new THREE.Mesh( cannonSideGeometry, cannonBaseMaterial );
-	side1.position.set(8,0,10);
-	base.add(side1);
-	let side2=new THREE.Mesh( cannonSideGeometry, cannonBaseMaterial );
-	side2.position.set(-8,0,10);
-	base.add(side2);
-	return base;
+	IblockLinePositions[i * 6 + 3] = x; // End x
+	IblockLinePositions[i * 6 + 4] = 10; // End y
+	IblockLinePositions[i * 6 + 5] = 10; // End z
 }
 
-let up=new THREE.Vector3(0,0,1);
-let front=new THREE.Vector3(0,1,0);
-let right=new THREE.Vector3(1,0,0);
-let cannon1=addCannon(new THREE.Vector3(150,0,5),new THREE.Quaternion().setFromAxisAngle(up,Math.PI/2));
-let cannon2=addCannon(new THREE.Vector3(-150,0,5),new THREE.Quaternion().setFromAxisAngle(up,-Math.PI/2));
+IblockLineGeometry.setAttribute('position', new THREE.BufferAttribute(IblockLinePositions, 3));
+let IblockLines = new THREE.LineSegments(IblockLineGeometry, BlockLineMaterial);
+Iblock1.add(IblockLines); // Add the lines as a child of the I block
+scene.add(Iblock1);
+
+//Tetris J block
+let JblockMaterial=new THREE.MeshStandardMaterial( {color: 0x0000FF});
+JblockMaterial.side=THREE.DoubleSide;
+let JblockGeometry=new THREE.BoxBufferGeometry( 60, 20, 20 );
+let Jblock1=new THREE.Mesh( JblockGeometry, JblockMaterial );
+Jblock1.position.set(140, 130, 10);
+
+let JblockJointGeometry=new THREE.BoxBufferGeometry( 20, 20, 20 );
+let JblockJoint1=new THREE.Mesh( JblockJointGeometry, JblockMaterial );
+JblockJoint1.position.set(-20, 20, 0);
+Jblock1.add(JblockJoint1); // Add the joint as a child of the J block
+
+let JblockLineGeometry=new THREE.BufferGeometry();
+let JblockLinePositions=new Float32Array( 4 * 3 * 2 );
+
+//Lines for J block: 3 vertical lines and 1 horizontal line (Not implemented yet)
+
+
+JblockLineGeometry.setAttribute( 'position', new THREE.BufferAttribute( JblockLinePositions, 3 ) );
+let JblockLines=new THREE.LineSegments( JblockLineGeometry, BlockLineMaterial );
+Jblock1.add(JblockLines); // Add the lines as a child of the J block
+scene.add(Jblock1);
+
+//Tetris L block
+let LblockMaterial=new THREE.MeshStandardMaterial( {color: 0xFFA500});
+LblockMaterial.side=THREE.DoubleSide;
+let LblockGeometry=new THREE.BoxBufferGeometry( 60, 20, 20 );
+let Lblock1=new THREE.Mesh( LblockGeometry, LblockMaterial );
+Lblock1.position.set(140, 70, 10);
+
+let LblockJointGeometry=new THREE.BoxBufferGeometry( 20, 20, 20 );
+let LblockJoint1=new THREE.Mesh( LblockJointGeometry, LblockMaterial );
+LblockJoint1.position.set(20, 20, 0);
+Lblock1.add(LblockJoint1); // Add the joint as a child of the J block
+
+let LblockLineGeometry=new THREE.BufferGeometry();
+let LblockLinePositions=new Float32Array( 4 * 3 * 2 );
+//Lines for L block: 3 vertical lines and 1 horizontal line (Not implemented yet)
+
+LblockLineGeometry.setAttribute( 'position', new THREE.BufferAttribute( LblockLinePositions, 3 ) );
+let LblockLines=new THREE.LineSegments( LblockLineGeometry, BlockLineMaterial );
+Lblock1.add(LblockLines); // Add the lines as a child of the J block
+scene.add(Lblock1);
+
+//Tetris O block
+let OblockMaterial=new THREE.MeshStandardMaterial( {color: 0xFFFF00});
+OblockMaterial.side=THREE.DoubleSide;
+let OblockGeometry=new THREE.BoxBufferGeometry( 40, 40, 20 );
+let Oblock1=new THREE.Mesh( OblockGeometry, OblockMaterial );
+Oblock1.position.set(130, 10, 10);
+
+let OblockLineGeometry=new THREE.BufferGeometry();
+let OblockLinePositions=new Float32Array( 4 * 3 * 2 );
+// Add lines to make the O block appear as 4 even cubes (Not implemented yet)
+
+OblockLineGeometry.setAttribute( 'position', new THREE.BufferAttribute( OblockLinePositions, 3 ) );
+let OblockLines=new THREE.LineSegments( OblockLineGeometry, BlockLineMaterial );
+Oblock1.add(OblockLines); // Add the lines as a child of the O block
+scene.add(Oblock1);
+
+//Tetris S block
+let SblockMaterial=new THREE.MeshStandardMaterial( {color: 0x00FF00});
+SblockMaterial.side=THREE.DoubleSide;
+let SblockGeometry=new THREE.BoxBufferGeometry( 40, 20, 20 );
+let Sblock1=new THREE.Mesh( SblockGeometry, SblockMaterial );
+Sblock1.position.set(150, -50, 10);
+
+let SblockJointGeometry=new THREE.BoxBufferGeometry( 40, 20, 20 );
+let SblockJoint1=new THREE.Mesh( SblockJointGeometry, SblockMaterial );
+SblockJoint1.position.set(-20, -20, 0);
+Sblock1.add(SblockJoint1); // Add the joint as a child of the S block
+
+let SblockLineGeometry=new THREE.BufferGeometry();
+let SblockLinePositions=new Float32Array( 4 * 3 * 2 );
+//Lines for S block: 3 vertical lines and 1 horizontal line (Not implemented yet)
+
+SblockLineGeometry.setAttribute( 'position', new THREE.BufferAttribute( SblockLinePositions, 3 ) );
+let SblockLines=new THREE.LineSegments( SblockLineGeometry, BlockLineMaterial );
+Sblock1.add(SblockLines); // Add the lines as a child of the S block
+scene.add(Sblock1);
+
+//Tetris T block
+let TblockMaterial=new THREE.MeshStandardMaterial( {color: 0x800080});
+TblockMaterial.side=THREE.DoubleSide;
+let TblockGeometry=new THREE.BoxBufferGeometry( 60, 20, 20 );
+let Tblock1=new THREE.Mesh( TblockGeometry, TblockMaterial );
+Tblock1.position.set(140, -130, 10);
+
+let TblockJointGeometry=new THREE.BoxBufferGeometry( 20, 20, 20 );
+let TblockJoint1=new THREE.Mesh( TblockJointGeometry, TblockMaterial );
+TblockJoint1.position.set(0, 20, 0);
+Tblock1.add(TblockJoint1); // Add the joint as a child of the T block
+
+let TblockLineGeometry=new THREE.BufferGeometry();
+let TblockLinePositions=new Float32Array( 4 * 3 * 2 );
+//Lines for T block: 3 vertical lines and 1 horizontal line (Not implemented yet)
+
+TblockLineGeometry.setAttribute( 'position', new THREE.BufferAttribute( TblockLinePositions, 3 ) );
+let TblockLines=new THREE.LineSegments( TblockLineGeometry, BlockLineMaterial );
+Tblock1.add(TblockLines); // Add the lines as a child of the T block
+scene.add(Tblock1);
+
+//Tetris Z block
+let ZblockMaterial=new THREE.MeshStandardMaterial( {color: 0xFF0000});
+ZblockMaterial.side=THREE.DoubleSide;
+let ZblockGeometry=new THREE.BoxBufferGeometry( 40, 20, 20 );
+let Zblock1=new THREE.Mesh( ZblockGeometry, ZblockMaterial );
+Zblock1.position.set(130, -170, 10);
+
+let ZblockJointGeometry=new THREE.BoxBufferGeometry( 40, 20, 20 );
+let ZblockJoint1=new THREE.Mesh( ZblockJointGeometry, ZblockMaterial );
+ZblockJoint1.position.set(20, -20, 0);
+Zblock1.add(ZblockJoint1); // Add the joint as a child of the Z block
+
+let ZblockLineGeometry=new THREE.BufferGeometry();
+let ZblockLinePositions=new Float32Array( 4 * 3 * 2 );
+//Lines for Z block: 3 vertical lines and 1 horizontal line (Not implemented yet)
+
+ZblockLineGeometry.setAttribute( 'position', new THREE.BufferAttribute( ZblockLinePositions, 3 ) );
+let ZblockLines=new THREE.LineSegments( ZblockLineGeometry, BlockLineMaterial );
+Zblock1.add(ZblockLines); // Add the lines as a child of the Z block
+scene.add(Zblock1);
+//*********************
+
+
 
 function rotateCannonsVertically(angle){//keeping them symmetrical. For a convenient UI it takes angles in degrees as input. Note that the axis is relative to the cannon base's frame and not the world's frame, since the body is a child object of the base, so the axis to rotate is actually its x axis.
 	//todo: to rotate cannon bodies, we need to set the rotation or quaternion of the cannon bodies. Note: the body's rotation is based on its parent(the base)'s frame, so the rotation needed to keep them symmetric is actually the same, not opposite.
@@ -202,8 +306,6 @@ function rotateCannonsHorizontally(angle){//keeping them symmetrical. An angle o
 }
 
 rotateCannonsVertically(30);//starting state
-
-
 
 
 //extra credit todo: add shadows for cannons and all other objects
