@@ -1,30 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-
-<title>test</title>
-<style>
-	html { width:100%;height:100%;  }
-	body { margin: 0; width:100%;height:100%;  }
-	canvas { display: block; width:100%;height:100%; }
-</style>
-<link rel="stylesheet" type="text/css" href="lib/dat.gui.css" />
+  <meta charset="utf8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>3D Tetris</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #111;
+      position: relative;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+  </style>
+  <link rel="stylesheet" type="text/css" href="lib/dat.gui.css" />
 </head>
-
 <body>
-	<canvas id="gl-canvas" style="width:100%;height:100%;margin: 0;padding:0;">
-	Oops ... your browser doesn't support the HTML5 canvas element
-	</canvas>
-	
+  <canvas id="gl-canvas">Oops ... your browser doesn't support the HTML5 canvas element</canvas>
+
+  <!-- Scripts -->
+  <script src="lib/stats.js"></script>
+  <script src="lib/dat.gui.js"></script>
+  <script src="lib/three.js"></script>
+  <script src="lib/OrbitControls.js"></script>
+  <script src="main.js"></script>
 </body>
-<script type="text/javascript" src="lib/stats.js"></script>
-<script type="text/javascript" src="lib/dat.gui.js"></script>
-<script type="text/javascript" src="lib/three.js"></script>
-<script type="text/javascript" src="lib/OrbitControls.js"></script>
-<script type="text/javascript" src="main.js"></script>
-
-
 </html>
-
