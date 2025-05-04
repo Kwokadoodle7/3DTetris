@@ -41,12 +41,6 @@ function resizeCanvas(forceResize = false) {
 }
 resizeCanvas(true);
 
-function snapToGrid(col, row) {
-	const x = -100 + col * 20 + 10; // +10 centers the block in its 20-wide cell
-	const y = -200 + row * 20 + 10; // +10 centers the block in its 20-high cell
-	return new THREE.Vector3(x, y, 10); // z stays fixed for now
-  }  
-
 // Lighting
 scene.add(new THREE.AmbientLight(0xaaaaaa));
 scene.add(new THREE.HemisphereLight(0x303f9f, 0x000000, 0.5));
@@ -133,31 +127,17 @@ nextTextLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typef
 });
 
 
-// ============ I Block ============ //
+
+
+// ============ All Tetris Blocks ============ //
+// I Block
 let IblockMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffff });
 IblockMaterial.side = THREE.DoubleSide;
 let IblockGeometry = new THREE.BoxBufferGeometry(80, 20, 20);
 let Iblock = new THREE.Mesh(IblockGeometry, IblockMaterial);
 Iblock.position.copy(snapToGrid(3, 18)); // column 3, row 18
+//scene.add(Iblock);
 
-let BlockLineMaterial = new THREE.LineBasicMaterial({ color: 0x808080 });
-let IblockLineGeometry = new THREE.BufferGeometry();
-let IblockLinePositions = new Float32Array(4 * 3 * 2);
-for (let i = 0; i < 4; i++) {
-  let x = -40 + i * 20;
-  IblockLinePositions[i * 6] = x;
-  IblockLinePositions[i * 6 + 1] = -10;
-  IblockLinePositions[i * 6 + 2] = 10;
-  IblockLinePositions[i * 6 + 3] = x;
-  IblockLinePositions[i * 6 + 4] = 10;
-  IblockLinePositions[i * 6 + 5] = 10;
-}
-IblockLineGeometry.setAttribute("position", new THREE.BufferAttribute(IblockLinePositions, 3));
-let IblockLines = new THREE.LineSegments(IblockLineGeometry, BlockLineMaterial);
-Iblock.add(IblockLines);
-scene.add(Iblock);
-
-// ============ All Tetris Blocks ============ //
 
 // J Block
 const JblockMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
@@ -168,7 +148,7 @@ Jblock.position.set(0, 140, 10);
 const JblockJoint = new THREE.Mesh(new THREE.BoxBufferGeometry(20, 20, 20), JblockMaterial);
 JblockJoint.position.set(-20, 20, 0);
 Jblock.add(JblockJoint);
-scene.add(Jblock);
+//scene.add(Jblock);
 
 // L Block
 const LblockMaterial = new THREE.MeshStandardMaterial({ color: 0xef8a00 });
@@ -179,14 +159,14 @@ Lblock.position.set(0, 100, 10);
 const LblockJoint = new THREE.Mesh(new THREE.BoxBufferGeometry(20, 20, 20), LblockMaterial);
 LblockJoint.position.set(20, 20, 0);
 Lblock.add(LblockJoint);
-scene.add(Lblock);
+//scene.add(Lblock);
 
 // O Block
 const OblockMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
 const OblockGeometry = new THREE.BoxBufferGeometry(40, 40, 20);
 const Oblock = new THREE.Mesh(OblockGeometry, OblockMaterial);
 Oblock.position.set(0, 60, 10);
-scene.add(Oblock);
+//scene.add(Oblock);
 
 // S Block
 const SblockMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
@@ -197,7 +177,7 @@ Sblock.position.set(0, 20, 10);
 const SblockJoint = new THREE.Mesh(new THREE.BoxBufferGeometry(40, 20, 20), SblockMaterial);
 SblockJoint.position.set(-20, -20, 0);
 Sblock.add(SblockJoint);
-scene.add(Sblock);
+//scene.add(Sblock);
 
 // T Block
 const TblockMaterial = new THREE.MeshStandardMaterial({ color: 0x800080 });
@@ -208,7 +188,7 @@ Tblock.position.set(0, -20, 10);
 const TblockJoint = new THREE.Mesh(new THREE.BoxBufferGeometry(20, 20, 20), TblockMaterial);
 TblockJoint.position.set(0, 20, 0);
 Tblock.add(TblockJoint);
-scene.add(Tblock);
+//scene.add(Tblock);
 
 // Z Block
 const ZblockMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
@@ -219,22 +199,8 @@ Zblock.position.set(0, -60, 10);
 const ZblockJoint = new THREE.Mesh(new THREE.BoxBufferGeometry(40, 20, 20), ZblockMaterial);
 ZblockJoint.position.set(20, -20, 0);
 Zblock.add(ZblockJoint);
-scene.add(Zblock);
+//scene.add(Zblock);
 
-// Real O Block in Hold Box
-const holdPreview = new THREE.Mesh(OblockGeometry.clone(), OblockMaterial.clone());
-holdPreview.scale.set(0.5, 0.5, 0.5);
-holdPreview.position.set(-160, 100, 20);
-scene.add(holdPreview);
-
-// Real S Block in Next Box
-const nextPreview = new THREE.Mesh(SblockGeometry.clone(), SblockMaterial.clone());
-const sJoint = new THREE.Mesh(new THREE.BoxBufferGeometry(40, 20, 20), SblockMaterial.clone());
-sJoint.position.set(-20, -20, 0);
-nextPreview.add(sJoint);
-nextPreview.scale.set(0.5, 0.5, 0.5);
-nextPreview.position.set(160, 100, 20);
-scene.add(nextPreview);
 
 // ============ 3D Controls UI ============ //
 const controlTextLoader = new THREE.FontLoader();
@@ -264,7 +230,180 @@ controlTextLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.ty
   const backdrop = new THREE.Mesh(backdropGeo, backdropMat);
   backdrop.position.set(0, -232, 10); // same center, slightly behind
   scene.add(backdrop);
+  
 });
+
+// Start Text
+const startTextLoader = new THREE.FontLoader();
+startTextLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+  const startText = `Press Space to Start`;
+
+  // Place press space to start text
+  const startTextGeo = new THREE.TextGeometry(startText, {
+    font: font,
+    size: 20,
+    height: 2,
+  });
+  const startTextMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const startTextMesh = new THREE.Mesh(startTextGeo, startTextMat);
+  startTextMesh.position.set(-130, -5, 26); // centered X, Y slightly above backdrop
+  // Add backdrop for start text
+  const startBackdropGeo = new THREE.PlaneGeometry(300, 30);
+  const startBackdropMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+  const startBackdrop = new THREE.Mesh(startBackdropGeo, startBackdropMat);
+  startBackdrop.position.set(0, 5, 24); // same center, slightly behind
+  scene.add(startBackdrop);
+  scene.add(startTextMesh);
+});
+
+// Score Text
+const scoreTextLoader = new THREE.FontLoader();
+scoreTextLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+  
+  let scoreText = `Score: ${score}`;
+  
+  // Place score text
+  const scoreTextGeo = new THREE.TextGeometry(scoreText, {
+    font: font,
+    size: 20,
+    height: 2,
+  });
+  const scoreTextMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const scoreTextMesh = new THREE.Mesh(scoreTextGeo, scoreTextMat);
+  scoreTextMesh.position.set(-50, 220, 0);
+  scene.add(scoreTextMesh);
+
+});
+
+// Placement functions
+function snapToGrid(col, row) {
+	const x = -100 + col * 20 + 10; // +10 centers the block in its 20-wide cell
+	const y = -200 + row * 20 + 10; // +10 centers the block in its 20-high cell
+	return new THREE.Vector3(x, y, 10); // z stays fixed for now
+}
+
+function centerOfNextBox() {
+  const x = nextBox.position.x;
+  const y = nextBox.position.y;
+  return new THREE.Vector3(x, y, 25); // z stays fixed for now
+}
+
+
+// ============ Game Logic ============ //
+//On initialization
+// Initialize game state variables
+let currentPiece = null; // The current Tetris piece
+let holdPiece = null; // The piece currently held by the player
+let nextPiece = null; // The next piece to be played
+let holdPreview = null; // The preview of the held piece
+let nextPreview = null; // The preview of the next piece
+let gameOver = false; // Flag to indicate if the game is over
+let score = 0; // Player's score
+let linesCleared = 0; // Number of lines cleared
+let grid = Array.from({ length: 20 }, () => Array(10).fill(0)); // 20 rows, 10 columns
+let dropInterval = 1000; // Time interval for dropping pieces
+let lastDropTime = 0; // Last time a piece was dropped
+let currentRotation = 0; // Current rotation of the piece
+let currentPosition = { x: 3, y: 0 }; // Current position of the piece
+let isHolding = false; // Flag to indicate if the player is holding a piece
+
+// Piece randomizer
+const pieces = [Iblock, Jblock, Lblock, Oblock, Sblock, Tblock, Zblock];
+
+function getRandomPiece() {
+  const randomIndex = Math.floor(Math.random() * pieces.length);
+  let randomPiece = pieces[randomIndex].clone(); // Clone the piece to avoid reference issues
+  pieces.splice(randomIndex, 1); // Remove the piece from the bag
+  if (pieces.length === 0) {
+    pieces.push(Iblock, Jblock, Lblock, Oblock, Sblock, Tblock, Zblock); // Reset the bag
+  }
+  return randomPiece; // Clone the piece to avoid reference issues
+}
+
+
+function resetGame() {
+  // Reset the grid and UI elements here
+
+  // Clear the UI elements (e.g., score, level, lines cleared) here
+  // Update the UI elements to reflect the reset state
+  // Remove hold and next pieces from the scene
+  if (holdPreview) {
+    scene.remove(holdPreview);
+  }
+  if (nextPreview) {
+    scene.remove(nextPreview);
+  }
+
+  // Reset game state variables
+  gameOver = false;
+  score = 0;
+  linesCleared = 0;
+  lastDropTime = Date.now();
+  isHolding = false;
+
+  // Clear the grid array
+  for (let row = 0; row < grid.length; row++) {
+    for (let col = 0; col < grid[row].length; col++) {
+      grid[row][col] = 0;
+    }
+  }
+
+  // currentPiece
+  currentPiece = getRandomPiece(); // Get a new random piece
+  currentPiece.position.copy(snapToGrid(4, 19)); // Start position for the piece
+  scene.add(currentPiece); // Add the current piece to the scene
+
+  // holdPiece
+  holdPiece = null;
+  
+  // nextPiece
+  nextPiece = getRandomPiece(); // Get a new random piece
+  nextPreview = nextPiece.clone(); // Clone the next piece for preview
+  nextPreview.position.copy(centerOfNextBox()); // Position the next piece in the next box
+  nextPreview.scale.set(0.75, 0.75, 0.75); // Scale down the preview piece
+  scene.add(nextPreview); // Add the next piece to the scene
+
+  // Start the game loop
+  requestAnimationFrame(gameLoop);
+}
+
+function gameLoop() {
+  if (gameOver) return; // Stop the game loop if game is over
+
+  // Check if it's time to drop the piece
+  const now = Date.now();
+  if (now - lastDropTime > dropInterval) {
+    //dropPiece(); // Drop the piece
+    lastDropTime = now; // Update the last drop time
+  }
+
+  // Render the scene
+  renderer.render(scene, camera);
+
+  // Request the next frame
+  requestAnimationFrame(gameLoop);
+}
+
+
+// ============ Event Listeners ============ //
+//On page initialization, wait for player to press space to start the game
+document.addEventListener("keydown", function (event) {
+  if (event.code === "Space") {
+    // Start the game logic here
+    console.log("Game started!");
+    // Remove the start text and start backdrop
+    scene.remove(scene.children.find(child => child.type === "Mesh" && child.geometry.type === "PlaneGeometry" && child.position.z === 24)); // remove start backdrop
+    scene.remove(scene.children.find(child => child.type === "Mesh" && child.geometry.type === "TextGeometry" && child.position.z === 26)); // remove start text
+    // Remove the event listener to prevent multiple triggers
+    document.removeEventListener("keydown", arguments.callee);
+    // You can add your game logic here, such as starting the Tetris game loop
+    // or initializing the game state.
+    resetGame(); // Reset the game state
+
+  }
+});
+
+
 
 
 
