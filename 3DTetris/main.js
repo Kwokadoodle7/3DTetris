@@ -297,6 +297,7 @@ let holdPiece = null; // The piece currently held by the player
 let nextPiece = null; // The next piece to be played
 let holdPreview = null; // The preview of the held piece
 let nextPreview = null; // The preview of the next piece
+let lockedPiece = null; // The piece that is locked in place
 let gameOver = false; // Flag to indicate if the game is over
 let score = 0; // Player's score
 let linesCleared = 0; // Number of lines cleared
@@ -326,7 +327,6 @@ function updateArray(piece) {
 
 }
 
-
 function movePiece(direction) {
   console.log("Moving piece " + direction);
   // Check if the piece can move in the specified direction
@@ -340,7 +340,9 @@ function rotatePiece() {
 function canMoveTo(x, y) {
   // Check if the piece can move to the new position in the grid
   // Check if the new position is within the grid bounds
-
+  if (x < 0 || x >= grid[0].length || y < 0 || y >= grid.length) {
+    return false; // Out of bounds
+  }
   // Check if the new position is occupied by another piece
   return true; // Placeholder, implement actual collision detection logic
 
@@ -370,19 +372,35 @@ function lockPiece(piece) {
   // Check if player wants to hold or rotate or move within grace period
   // If player wants to hold or rotate or move, do not lock the piece in place
   // If not, lock the piece in place
+  // Update the grid array with the piece's position
+  // Create a clone of the piece at the position in the grid
+  const piecePosition = piece.position.clone(); // Clone the position of the piece
+  const pieceGeometry = piece.geometry.clone(); // Clone the geometry of the piece
+  const pieceMaterial = piece.material.clone(); // Clone the material of the piece
+  const lockedPiece = new THREE.Mesh(pieceGeometry, pieceMaterial); // Create a new mesh with the cloned geometry and material
+  lockedPiece.position.copy(piecePosition); // Set the position of the locked piece
+  lockedPiece.updateMatrixWorld(); // Update the matrix world of the locked piece
+  scene.add(lockedPiece); // Add the locked piece to the scene
   // Check for line clears
   checkForLineClears();
   // Check for game over
-
-
-}
-
-function checkForLineClears() {
-
+  if (lockedPiece.position.y > 210) {
+    console.log("lockedPiece position: " + lockedPiece.position.x + ", " + lockedPiece.position.y); // Log the position of the locked piece
+    gameOver = true; // Set game over flag
+    console.log("Game Over!"); // Log game over message
+  }
 }
 
 function updateCurrentPiece() {
     // Get a new piece
+    currentPiece = nextPiece; // Set the current piece to the next piece
+    console.log("updateCurrentPiece position:" + currentPiece.position.x + ", " + currentPiece.position.y); // Log the position of the current piece
+    currentPiece.position.copy(snapToGrid(4, 20)); // Start position for the piece
+    // Reset current position
+
+}
+
+function checkForLineClears() {
 
 }
 
