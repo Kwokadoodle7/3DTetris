@@ -320,6 +320,54 @@ function getRandomPiece() {
   return randomPiece; // Clone the piece to avoid reference issues
 }
 
+function updateArray(piece) {
+  // Update the grid array with the current piece's position
+
+}
+
+
+function movePiece(direction) {
+  console.log("Moving piece " + direction);
+  // Check if the piece can move in the specified direction
+}
+
+function rotatePiece() {
+
+}
+
+// check using the grid array if the piece can move to the new position (edit parameters)
+function canMoveTo() {
+  // Check if the piece can move to the new position
+
+}
+
+function dropPiece() {
+  console.log("Dropping piece down");
+  // Check if the piece can move down
+
+  
+  // Else lock the piece in place and check for line clears
+    //lockPiece(currentPiece);
+    checkForLineClears();
+    updateCurrentPiece(); // Get the next piece
+}
+
+function lockPiece(piece) {
+  console.log("Locking piece in place");
+  // Lock the piece in place on the grid
+
+  // Check for game over
+
+}
+
+function checkForLineClears() {
+
+}
+
+function updateCurrentPiece() {
+    // Get a new piece
+
+}
 
 function resetGame() {
   // Reset the grid and UI elements here
@@ -352,6 +400,7 @@ function resetGame() {
   currentPiece = getRandomPiece(); // Get a new random piece
   currentPiece.position.copy(snapToGrid(4, 19)); // Start position for the piece
   scene.add(currentPiece); // Add the current piece to the scene
+  updateArray(currentPiece); // Update the grid array with the current piece
 
   // holdPiece
   holdPiece = null;
@@ -367,13 +416,28 @@ function resetGame() {
   requestAnimationFrame(gameLoop);
 }
 
+// =========== Game Loop ============ //
 function gameLoop() {
-  if (gameOver) return; // Stop the game loop if game is over
+  if (gameOver){
+    // Display game over message and stop the game loop
+    const gameOverText = `Game Over!: Press Space to Restart`;
+    const gameOverTextGeo = new THREE.TextGeometry(gameOverText, {
+      font: new THREE.FontLoader().parse('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json'),
+      size: 20,
+      height: 2,
+    });
+    const gameOverTextMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const gameOverTextMesh = new THREE.Mesh(gameOverTextGeo, gameOverTextMat);
+    gameOverTextMesh.position.set(-150, -5, 26); // centered X, Y slightly above backdrop
+    scene.add(gameOverTextMesh); // Add game over text to the scene
+    reseetOnSpace(); // Wait for player to press space to restart
+    return; // Stop the game loop
+  }
 
   // Check if it's time to drop the piece
   const now = Date.now();
   if (now - lastDropTime > dropInterval) {
-    //dropPiece(); // Drop the piece
+    dropPiece(); // Drop the piece
     lastDropTime = now; // Update the last drop time
   }
 
@@ -387,21 +451,27 @@ function gameLoop() {
 
 // ============ Event Listeners ============ //
 //On page initialization, wait for player to press space to start the game
-document.addEventListener("keydown", function (event) {
-  if (event.code === "Space") {
-    // Start the game logic here
-    console.log("Game started!");
-    // Remove the start text and start backdrop
-    scene.remove(scene.children.find(child => child.type === "Mesh" && child.geometry.type === "PlaneGeometry" && child.position.z === 24)); // remove start backdrop
-    scene.remove(scene.children.find(child => child.type === "Mesh" && child.geometry.type === "TextGeometry" && child.position.z === 26)); // remove start text
-    // Remove the event listener to prevent multiple triggers
-    document.removeEventListener("keydown", arguments.callee);
-    // You can add your game logic here, such as starting the Tetris game loop
-    // or initializing the game state.
-    resetGame(); // Reset the game state
+function reseetOnSpace() {
+  document.addEventListener("keydown", function (event) {
+    if (event.code === "Space") {
+      // Start the game logic here
+      console.log("Game started!");
+      // Remove the start text and start backdrop
+      scene.remove(scene.children.find(child => child.type === "Mesh" && child.geometry.type === "PlaneGeometry" && child.position.z === 24)); // remove start backdrop
+      scene.remove(scene.children.find(child => child.type === "Mesh" && child.geometry.type === "TextGeometry" && child.position.z === 26)); // remove start text
+      // Remove the event listener to prevent multiple triggers
+      document.removeEventListener("keydown", arguments.callee);
+      // You can add your game logic here, such as starting the Tetris game loop
+      // or initializing the game state.
+      resetGame(); // Reset the game state
+    }
+  });
+}
 
-  }
-});
+reseetOnSpace(); // Call the function to set up the event listener
+
+// Handle keydown events for controls
+
 
 
 
