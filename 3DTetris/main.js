@@ -304,7 +304,7 @@ let grid = Array.from({ length: 20 }, () => Array(10).fill(0)); // 20 rows, 10 c
 let dropInterval = 1000; // Time interval for dropping pieces
 let lastDropTime = 0; // Last time a piece was dropped
 let currentRotation = 0; // Current rotation of the piece
-let currentPosition = { x: 3, y: 0 }; // Current position of the piece
+let currentPosition = { x: 4, y: 20 }; // Current position of the piece
 let isHolding = false; // Flag to indicate if the player is holding a piece
 
 // Piece randomizer
@@ -323,6 +323,7 @@ function getRandomPiece() {
 function updateArray(piece) {
   // Update the grid array with the current piece's position
 
+
 }
 
 
@@ -336,27 +337,43 @@ function rotatePiece() {
 }
 
 // check using the grid array if the piece can move to the new position (edit parameters)
-function canMoveTo() {
-  // Check if the piece can move to the new position
+function canMoveTo(x, y) {
+  // Check if the piece can move to the new position in the grid
+  // Check if the new position is within the grid bounds
+
+  // Check if the new position is occupied by another piece
+  return true; // Placeholder, implement actual collision detection logic
 
 }
 
 function dropPiece() {
   console.log("Dropping piece down");
   // Check if the piece can move down
-
-  
+  if (canMoveTo(currentPosition.x, currentPosition.y - 1)) {
+    // Move the piece down
+    currentPosition.y -= 1; // Move down by one row
+    console.log("Piece moved down to: " + currentPosition.x + ", " + currentPosition.y);
+    currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y)); // Update the piece's position
+    updateArray(currentPiece); // Update the grid array with the new position
+  }
   // Else lock the piece in place and check for line clears
-    //lockPiece(currentPiece);
+  else {
+    // If piece cannot move down and player does not want to hold or rotate or move, lock the piece in place
+    lockPiece(currentPiece); // Lock the piece in place
     checkForLineClears();
     updateCurrentPiece(); // Get the next piece
+}
 }
 
 function lockPiece(piece) {
   console.log("Locking piece in place");
-  // Lock the piece in place on the grid
-
+  // Check if player wants to hold or rotate or move within grace period
+  // If player wants to hold or rotate or move, do not lock the piece in place
+  // If not, lock the piece in place
+  // Check for line clears
+  checkForLineClears();
   // Check for game over
+
 
 }
 
@@ -398,7 +415,8 @@ function resetGame() {
 
   // currentPiece
   currentPiece = getRandomPiece(); // Get a new random piece
-  currentPiece.position.copy(snapToGrid(4, 19)); // Start position for the piece
+  currentPiece.position.copy(snapToGrid(4, 20)); // Start position for the piece
+  console.log("Current piece position: " + currentPiece.position.x + ", " + currentPiece.position.y);
   scene.add(currentPiece); // Add the current piece to the scene
   updateArray(currentPiece); // Update the grid array with the current piece
 
