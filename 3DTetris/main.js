@@ -281,6 +281,8 @@ startTextLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.type
   scene.add(startTextMesh);
 });
 
+let scoreTextMesh = null; // Initialize score text mesh
+
 // Score Text
 const scoreTextLoader = new THREE.FontLoader();
 scoreTextLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
@@ -294,11 +296,27 @@ scoreTextLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.type
     height: 2,
   });
   const scoreTextMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const scoreTextMesh = new THREE.Mesh(scoreTextGeo, scoreTextMat);
+  scoreTextMesh = new THREE.Mesh(scoreTextGeo, scoreTextMat);
   scoreTextMesh.position.set(-50, 220, 0);
   scene.add(scoreTextMesh);
-
 });
+
+// Update score text function
+function updateScoreText() {
+  if (scoreTextMesh) {
+    scene.remove(scoreTextMesh);
+  }
+  let scoreText = `Score: ${score}`;
+  const scoreTextGeo = new THREE.TextGeometry(scoreText, {
+    font: loadedFont,
+    size: 20,
+    height: 2,
+  });
+  const scoreTextMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  scoreTextMesh = new THREE.Mesh(scoreTextGeo, scoreTextMat);
+  scoreTextMesh.position.set(-50, 220, 0);
+  scene.add(scoreTextMesh);
+}
 
 const SRS_KICKS = {
   'JLSTZ': {
@@ -645,8 +663,27 @@ function checkForLineClears() {
       clearRow(row, scene);
       shiftRowsDown(row);
       row--; // Check the same row again since it was replaced
+      linesCleared++;
     }
   }
+  switch (linesCleared) {
+    case 1:
+      score += 100;
+      break;
+    case 2:
+      score += 300;
+      break;
+    case 3:
+      score += 500;
+      break;
+    case 4:
+      score += 800;
+      break;
+    default:
+      break;
+  }
+  updateScoreText();
+  linesCleared = 0; // Reset lines cleared after scoring
 }
 
 
