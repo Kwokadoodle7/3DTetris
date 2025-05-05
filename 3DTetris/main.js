@@ -347,7 +347,12 @@ const pieces = [
 function getRandomPiece() {
   const index = Math.floor(Math.random() * pieces.length);
   const piece = pieces[index]();
-  piece.position.copy(snapToGrid(4, 19));
+  // remove piece from bag
+  pieces.splice(index, 1);
+  // if bag is empty, refill it
+  if (pieces.length === 0) {
+    pieces.push(createIBlock, createJBlock, createLBlock, createOBlock, createSBlock, createTBlock, createZBlock);
+  }
   return piece;
 }
 
@@ -506,7 +511,6 @@ function resetGame() {
 
   currentPiece = getRandomPiece();
   currentPiece.position.copy(snapToGrid(4, 19));
-  console.log("Current piece position: " + currentPiece.position.x + ", " + currentPiece.position.y);
   scene.add(currentPiece);
 
   holdPiece = null;
