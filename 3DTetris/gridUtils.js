@@ -49,10 +49,6 @@ function shiftRowsDown(startRow) {
       }
     }
   }
-  // Clear top row
-  for (let col = 0; col < GRID_COLS; col++) {
-    gridArray[GRID_ROWS - 1][col] = null;
-  }
 }
 
 // Convert (col, row) grid coordinates to world (x, y)

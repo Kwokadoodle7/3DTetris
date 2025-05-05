@@ -346,7 +346,6 @@ let holdPiece = null; // The piece currently held by the player
 let nextPiece = null; // The next piece to be played
 let holdPreview = null; // The preview of the held piece
 let nextPreview = null; // The preview of the next piece
-let lockedPiece = null; // The piece that is locked in place
 let gameStarted = false; // Flag to indicate if the game has started
 let gameOver = false; // Flag to indicate if the game is over
 let score = 0; // Player's score
@@ -450,6 +449,16 @@ function handleHoldPiece() {
 
   currentPiece.rotation.set(0, 0, 0);
   currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
+  for (let cube of currentPiece.children) {
+    const { x: offsetX, y: offsetY } = cube.userData.offset;
+    const col = currentPosition.x + offsetX;
+    const row = currentPosition.y + offsetY;
+    // if any of the cubes are out of bounds, shift the whole piece down
+    if (row > GRID_ROWS - 1) {
+      currentPosition.y -= 1;
+      currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
+    }
+  }
   scene.add(currentPiece);
 
   // Update hold preview
@@ -485,13 +494,24 @@ function canMoveTo(newX, newY) {
 
 
 function lockPiece() {
+  let temporaryCoordList = [];
   for (let cube of currentPiece.children) {
     const { x: offsetX, y: offsetY } = cube.userData.offset;
     const col = currentPosition.x + offsetX;
     const row = currentPosition.y + offsetY;
-    console.log(`Lock cube position: ${cube.position}, Grid position: (${col}, ${row})`);
     setGridCell(row, col, cube);
+    // store position in temporary grid array
+    temporaryCoordList.push({ x: col, y: row });
   }
+  for (let coord of temporaryCoordList) {
+    const { x: col, y: row } = coord;
+    const cube = gridArray[row][col];
+    if (cube) {
+      cube.position.copy(snapToGrid(col, row));
+      scene.add(cube); // Add the cube back to the scene
+    }
+  }
+  scene.remove(currentPiece);
 }
 
 function movePiece(direction) {
@@ -568,7 +588,6 @@ function rotatePiece(clockwise = true) {
 }
 
 function dropPiece() {
-  console.log("Dropping piece down");
   if (canMoveTo(currentPosition.x, currentPosition.y - 1)) {
     currentPosition.y -= 1;
     currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
@@ -585,7 +604,7 @@ function hardDropPiece() {
   }
 
   currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
-  lockPiece(currentPiece);
+  lockPiece();
   checkForLineClears();
   updateCurrentPiece();
 }
