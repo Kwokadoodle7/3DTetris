@@ -322,6 +322,7 @@ let nextPiece = null; // The next piece to be played
 let holdPreview = null; // The preview of the held piece
 let nextPreview = null; // The preview of the next piece
 let lockedPiece = null; // The piece that is locked in place
+let gameStarted = false; // Flag to indicate if the game has started
 let gameOver = false; // Flag to indicate if the game is over
 let score = 0; // Player's score
 let linesCleared = 0; // Number of lines cleared
@@ -351,25 +352,73 @@ function getRandomPiece() {
 }
 
 
-function movePiece(direction) {
-  console.log("Moving piece " + direction);
-  // Check if the piece can move in the specified direction
-}
-
 function rotatePiece() {
 
 }
 
-// check using the grid array if the piece can move to the new position (edit parameters)
-function canMoveTo(x, y) {
-  // Check if the piece can move to the new position in the grid
-  // Check if the new position is within the grid bounds
-  if (x < 0 || x >= gridArray[0].length || y < 0 || y >= gridArray.length) {
-    return false; // Out of bounds
-  }
-  // Check if the new position is occupied by another piece
-  return true; // Placeholder, implement actual collision detection logic
+function handleHoldPiece() {
+  if (isHolding) return; // prevent multiple holds per drop
+  isHolding = true;
 
+  scene.remove(currentPiece);
+  if (holdPiece) {
+    // Swap
+    const temp = holdPiece;
+    holdPiece = currentPiece;
+    currentPiece = temp;
+    currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
+    scene.add(currentPiece);
+  } else {
+    // Store first piece and get a new one
+    holdPiece = currentPiece;
+    currentPiece = nextPiece;
+    currentPiece.position.copy(snapToGrid(4, 19));
+    nextPiece = getRandomPiece();
+    nextPreview = nextPiece.clone();
+    nextPreview.position.copy(centerOfNextBox());
+    nextPreview.scale.set(0.75, 0.75, 0.75);
+    scene.add(nextPreview);
+    scene.add(currentPiece);
+  }
+
+  // Update hold preview
+  if (holdPreview) scene.remove(holdPreview);
+  holdPreview = holdPiece.clone();
+  holdPreview.position.set(holdBox.position.x, holdBox.position.y, 25);
+  holdPreview.scale.set(0.75, 0.75, 0.75);
+  scene.add(holdPreview);
+}
+
+
+// check using the grid array if the piece can move to the new position (edit parameters)
+function canMoveTo(newX, newY) {
+  for (let cube of currentPiece.children) {
+    const offset = cube.position.clone().divideScalar(CELL_SIZE);
+    const col = newX + Math.round(offset.x);
+    const row = newY + Math.round(offset.y);
+
+    // Check bounds
+    if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) {
+      return false;
+    }
+
+    // Check collision
+    if (isCellOccupied(row, col)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function movePiece(direction) {
+  const deltaX = direction === "left" ? -1 : 1;
+  const newX = currentPosition.x + deltaX;
+
+  if (canMoveTo(newX, currentPosition.y)) {
+    currentPosition.x = newX;
+    currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
+  }
 }
 
 function dropPiece() {
@@ -382,6 +431,16 @@ function dropPiece() {
     checkForLineClears();
     updateCurrentPiece();
   }
+}
+
+function hardDropPiece() {
+  while (canMoveTo(currentPosition.x, currentPosition.y - 1)) {
+    currentPosition.y -= 1;
+  }
+  currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
+  lockPiece(currentPiece);
+  checkForLineClears();
+  updateCurrentPiece();
 }
 
 function lockPiece(pieceGroup) {
@@ -451,6 +510,8 @@ function resetGame() {
 
   requestAnimationFrame(gameLoop);
   console.log("Game started!"); // Log game start
+
+  document.addEventListener("keydown", handleGameplayKeys);
 }
 
 // =========== Game Loop ============ //
@@ -492,14 +553,16 @@ function gameLoop() {
 //On page initialization, wait for player to press space to start the game
 
 function handleStartKey(event) {
-  if (event.code === "Space") {
+  if (event.code === "Space" && !gameStarted) {
     console.log("Game started!");
+    gameStarted = true;
     scene.remove(scene.children.find(child => child.type === "Mesh" && child.geometry.type === "PlaneGeometry" && child.position.z === 24));
     scene.remove(scene.children.find(child => child.type === "Mesh" && child.geometry.type === "TextGeometry" && child.position.z === 26));
     document.removeEventListener("keydown", handleStartKey);
     resetGame();
   }
 }
+
 
 function resetOnSpace() {
   document.addEventListener("keydown", handleStartKey);
@@ -508,11 +571,33 @@ function resetOnSpace() {
 
 resetOnSpace(); // Call the function to set up the event listener
 
-// Handle keydown events for controls
+// ============ keydown Events ============ //
+function handleGameplayKeys(event) {
+  if (!currentPiece || gameOver) return;
 
-
-
-
+  switch (event.code) {
+    case "KeyA":
+      movePiece("left");
+      break;
+    case "KeyD":
+      movePiece("right");
+      break;
+    case "KeyS":
+      dropPiece();
+      break;
+    case "Space":
+      hardDropPiece();
+      break;
+    case "KeyW":
+      rotatePiece();
+      break;
+    case "KeyC":
+    case "ShiftLeft":
+    case "ShiftRight":
+      handleHoldPiece();
+      break;
+  }
+}
 
 
 // ============ Stats & Animate ============ //
