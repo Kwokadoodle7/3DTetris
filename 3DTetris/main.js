@@ -353,8 +353,69 @@ function getRandomPiece() {
 
 
 function rotatePiece() {
+  // Define rotation pivot for each shape
+  // Format: [x, y] in local grid units
+  const rotationCenters = {
+    I: [1.5, 0.5],
+    J: [1, 1],
+    L: [1, 1],
+    O: [0.5, 0.5], // doesn't rotate, so we can skip later
+    S: [1, 1],
+    T: [1, 1],
+    Z: [1, 1],
+  };
 
+  // Detect piece type from material color (you can improve this with a `type` property later)
+  const color = currentPiece.children[0].material.color.getHex();
+  const typeByColor = {
+    0x00ffff: "I",
+    0x0000ff: "J",
+    0xef8a00: "L",
+    0xffff00: "O",
+    0x00ff00: "S",
+    0x800080: "T",
+    0xff0000: "Z",
+  };
+
+  const pieceType = typeByColor[color];
+  if (!pieceType || pieceType === "O") return; // No rotation for O block
+
+  const [pivotX, pivotY] = rotationCenters[pieceType];
+
+  // Save original positions in case we need to revert
+  const originalPositions = currentPiece.children.map(cube => cube.position.clone());
+
+  // Apply rotation relative to pivot
+  currentPiece.children.forEach(cube => {
+    let x = cube.position.x / CELL_SIZE;
+    let y = cube.position.y / CELL_SIZE;
+
+    // Translate to origin relative to pivot
+    x -= pivotX;
+    y -= pivotY;
+
+    // Rotate: (x, y) → (y, -x)
+    let rotatedX = y;
+    let rotatedY = -x;
+
+    // Translate back
+    rotatedX += pivotX;
+    rotatedY += pivotY;
+
+    cube.position.set(rotatedX * CELL_SIZE, rotatedY * CELL_SIZE, 0);
+  });
+
+  // Validate rotated position
+  if (!canMoveTo(currentPosition.x, currentPosition.y)) {
+    currentPiece.children.forEach((cube, i) => {
+      cube.position.copy(originalPositions[i]);
+    });
+  } else {
+    currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
+  }
 }
+
+
 
 function handleHoldPiece() {
   if (isHolding) return; // prevent multiple holds per drop
