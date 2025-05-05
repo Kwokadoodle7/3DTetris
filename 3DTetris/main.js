@@ -1,5 +1,28 @@
 // merged_main.js with 3D UI Boxes
 
+import gridUtils from './gridUtils.js';
+
+let loadedFont = null;
+const fontLoader = new THREE.FontLoader();
+fontLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+  loadedFont = font;
+});
+
+const {
+  gridArray,
+  positionToGridIndex,
+  isCellOccupied,
+  setGridCell,
+  clearRow,
+  shiftRowsDown,
+  GRID_ROWS,
+  GRID_COLS,
+  CELL_SIZE
+} = gridUtils;
+
+const GRID_WIDTH = GRID_COLS * CELL_SIZE;
+const GRID_HEIGHT = GRID_ROWS * CELL_SIZE;
+
 let canvas = document.getElementById("gl-canvas");
 let context = canvas.getContext("webgl2", { alpha: false });
 let scene = new THREE.Scene();
@@ -9,15 +32,13 @@ scene.fog = new THREE.Fog(0xcce0ff, 50, 2000);
 let width = canvas.clientWidth,
   height = canvas.clientHeight;
 
-let camera = new THREE.OrthographicCamera(
-  width / -2,
-  width / 2,
-  height / 2,
-  height / -2,
-  1,
-  10000
-);
-camera.position.z = 500;
+  let camera = new THREE.OrthographicCamera(
+    width / -2, width / 2,
+    height / 2, height / -2,
+    -1000, 1000  // <- expanded z range
+  );
+  camera.position.z = 100; // <- bring closer to center of objects
+  
 
 let renderer = new THREE.WebGLRenderer({ canvas: canvas, context: context });
 renderer.setSize(width, height, false);
@@ -130,76 +151,78 @@ nextTextLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typef
 
 
 // ============ All Tetris Blocks ============ //
-// I Block
-let IblockMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffff });
-IblockMaterial.side = THREE.DoubleSide;
-let IblockGeometry = new THREE.BoxBufferGeometry(80, 20, 20);
-let Iblock = new THREE.Mesh(IblockGeometry, IblockMaterial);
-Iblock.position.copy(snapToGrid(3, 18)); // column 3, row 18
-//scene.add(Iblock);
+function createBlock(material, xOffset, yOffset) {
+  const cube = new THREE.Mesh(new THREE.BoxGeometry(CELL_SIZE, CELL_SIZE, 20), material);
+  cube.position.set(xOffset * CELL_SIZE, yOffset * CELL_SIZE, 0);
+  return cube;
+}
 
+function createIBlock() {
+  const mat = new THREE.MeshStandardMaterial({ color: 0x00ffff });
+  const g = new THREE.Group();
+  for (let i = 0; i < 4; i++) g.add(createBlock(mat, i, 0));
+  return g;
+}
 
-// J Block
-const JblockMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
-const JblockGeometry = new THREE.BoxBufferGeometry(60, 20, 20);
-const Jblock = new THREE.Mesh(JblockGeometry, JblockMaterial);
-Jblock.position.set(0, 140, 10);
+function createJBlock() {
+  const mat = new THREE.MeshStandardMaterial({ color: 0x0000ff });
+  const g = new THREE.Group();
+  g.add(createBlock(mat, 0, 1));
+  g.add(createBlock(mat, 0, 0));
+  g.add(createBlock(mat, 1, 0));
+  g.add(createBlock(mat, 2, 0));
+  return g;
+}
 
-const JblockJoint = new THREE.Mesh(new THREE.BoxBufferGeometry(20, 20, 20), JblockMaterial);
-JblockJoint.position.set(-20, 20, 0);
-Jblock.add(JblockJoint);
-//scene.add(Jblock);
+function createLBlock() {
+  const mat = new THREE.MeshStandardMaterial({ color: 0xef8a00 });
+  const g = new THREE.Group();
+  g.add(createBlock(mat, 2, 1));
+  g.add(createBlock(mat, 0, 0));
+  g.add(createBlock(mat, 1, 0));
+  g.add(createBlock(mat, 2, 0));
+  return g;
+}
 
-// L Block
-const LblockMaterial = new THREE.MeshStandardMaterial({ color: 0xef8a00 });
-const LblockGeometry = new THREE.BoxBufferGeometry(60, 20, 20);
-const Lblock = new THREE.Mesh(LblockGeometry, LblockMaterial);
-Lblock.position.set(0, 100, 10);
+function createOBlock() {
+  const mat = new THREE.MeshStandardMaterial({ color: 0xffff00 });
+  const g = new THREE.Group();
+  g.add(createBlock(mat, 0, 0));
+  g.add(createBlock(mat, 1, 0));
+  g.add(createBlock(mat, 0, 1));
+  g.add(createBlock(mat, 1, 1));
+  return g;
+}
 
-const LblockJoint = new THREE.Mesh(new THREE.BoxBufferGeometry(20, 20, 20), LblockMaterial);
-LblockJoint.position.set(20, 20, 0);
-Lblock.add(LblockJoint);
-//scene.add(Lblock);
+function createSBlock() {
+  const mat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+  const g = new THREE.Group();
+  g.add(createBlock(mat, 1, 1));
+  g.add(createBlock(mat, 2, 1));
+  g.add(createBlock(mat, 0, 0));
+  g.add(createBlock(mat, 1, 0));
+  return g;
+}
 
-// O Block
-const OblockMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
-const OblockGeometry = new THREE.BoxBufferGeometry(40, 40, 20);
-const Oblock = new THREE.Mesh(OblockGeometry, OblockMaterial);
-Oblock.position.set(0, 60, 10);
-//scene.add(Oblock);
+function createTBlock() {
+  const mat = new THREE.MeshStandardMaterial({ color: 0x800080 });
+  const g = new THREE.Group();
+  g.add(createBlock(mat, 1, 1));
+  g.add(createBlock(mat, 0, 0));
+  g.add(createBlock(mat, 1, 0));
+  g.add(createBlock(mat, 2, 0));
+  return g;
+}
 
-// S Block
-const SblockMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-const SblockGeometry = new THREE.BoxBufferGeometry(40, 20, 20);
-const Sblock = new THREE.Mesh(SblockGeometry, SblockMaterial);
-Sblock.position.set(0, 20, 10);
-
-const SblockJoint = new THREE.Mesh(new THREE.BoxBufferGeometry(40, 20, 20), SblockMaterial);
-SblockJoint.position.set(-20, -20, 0);
-Sblock.add(SblockJoint);
-//scene.add(Sblock);
-
-// T Block
-const TblockMaterial = new THREE.MeshStandardMaterial({ color: 0x800080 });
-const TblockGeometry = new THREE.BoxBufferGeometry(60, 20, 20);
-const Tblock = new THREE.Mesh(TblockGeometry, TblockMaterial);
-Tblock.position.set(0, -20, 10);
-
-const TblockJoint = new THREE.Mesh(new THREE.BoxBufferGeometry(20, 20, 20), TblockMaterial);
-TblockJoint.position.set(0, 20, 0);
-Tblock.add(TblockJoint);
-//scene.add(Tblock);
-
-// Z Block
-const ZblockMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-const ZblockGeometry = new THREE.BoxBufferGeometry(40, 20, 20);
-const Zblock = new THREE.Mesh(ZblockGeometry, ZblockMaterial);
-Zblock.position.set(0, -60, 10);
-
-const ZblockJoint = new THREE.Mesh(new THREE.BoxBufferGeometry(40, 20, 20), ZblockMaterial);
-ZblockJoint.position.set(20, -20, 0);
-Zblock.add(ZblockJoint);
-//scene.add(Zblock);
+function createZBlock() {
+  const mat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+  const g = new THREE.Group();
+  g.add(createBlock(mat, 0, 1));
+  g.add(createBlock(mat, 1, 1));
+  g.add(createBlock(mat, 1, 0));
+  g.add(createBlock(mat, 2, 0));
+  return g;
+}
 
 
 // ============ 3D Controls UI ============ //
@@ -277,10 +300,11 @@ scoreTextLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.type
 
 // Placement functions
 function snapToGrid(col, row) {
-	const x = -100 + col * 20 + 10; // +10 centers the block in its 20-wide cell
-	const y = -200 + row * 20 + 10; // +10 centers the block in its 20-high cell
-	return new THREE.Vector3(x, y, 10); // z stays fixed for now
+  const x = -GRID_WIDTH / 2 + col * CELL_SIZE + CELL_SIZE / 2;
+  const y = -GRID_HEIGHT / 2 + row * CELL_SIZE + CELL_SIZE / 2;
+  return new THREE.Vector3(x, y, 10); // z = 10 as before
 }
+
 
 function centerOfNextBox() {
   const x = nextBox.position.x;
@@ -301,31 +325,31 @@ let lockedPiece = null; // The piece that is locked in place
 let gameOver = false; // Flag to indicate if the game is over
 let score = 0; // Player's score
 let linesCleared = 0; // Number of lines cleared
-let grid = Array.from({ length: 20 }, () => Array(10).fill(0)); // 20 rows, 10 columns
+//let grid = Array.from({ length: 20 }, () => Array(10).fill(0)); // 20 rows, 10 columns
 let dropInterval = 1000; // Time interval for dropping pieces
 let lastDropTime = 0; // Last time a piece was dropped
 let currentRotation = 0; // Current rotation of the piece
-let currentPosition = { x: 4, y: 20 }; // Current position of the piece
+let currentPosition = { x: 4, y: 19 }; // Current position of the piece
 let isHolding = false; // Flag to indicate if the player is holding a piece
 
 // Piece randomizer
-const pieces = [Iblock, Jblock, Lblock, Oblock, Sblock, Tblock, Zblock];
+const pieces = [
+  createIBlock,
+  createJBlock,
+  createLBlock,
+  createOBlock,
+  createSBlock,
+  createTBlock,
+  createZBlock,
+];
 
 function getRandomPiece() {
-  const randomIndex = Math.floor(Math.random() * pieces.length);
-  let randomPiece = pieces[randomIndex].clone(); // Clone the piece to avoid reference issues
-  pieces.splice(randomIndex, 1); // Remove the piece from the bag
-  if (pieces.length === 0) {
-    pieces.push(Iblock, Jblock, Lblock, Oblock, Sblock, Tblock, Zblock); // Reset the bag
-  }
-  return randomPiece; // Clone the piece to avoid reference issues
+  const index = Math.floor(Math.random() * pieces.length);
+  const piece = pieces[index]();
+  piece.position.copy(snapToGrid(4, 19));
+  return piece;
 }
 
-function updateArray(piece) {
-  // Update the grid array with the current piece's position
-
-
-}
 
 function movePiece(direction) {
   console.log("Moving piece " + direction);
@@ -340,7 +364,7 @@ function rotatePiece() {
 function canMoveTo(x, y) {
   // Check if the piece can move to the new position in the grid
   // Check if the new position is within the grid bounds
-  if (x < 0 || x >= grid[0].length || y < 0 || y >= grid.length) {
+  if (x < 0 || x >= gridArray[0].length || y < 0 || y >= gridArray.length) {
     return false; // Out of bounds
   }
   // Check if the new position is occupied by another piece
@@ -350,46 +374,28 @@ function canMoveTo(x, y) {
 
 function dropPiece() {
   console.log("Dropping piece down");
-  // Check if the piece can move down
   if (canMoveTo(currentPosition.x, currentPosition.y - 1)) {
-    // Move the piece down
-    currentPosition.y -= 1; // Move down by one row
-    console.log("Piece moved down to: " + currentPosition.x + ", " + currentPosition.y);
-    currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y)); // Update the piece's position
-    updateArray(currentPiece); // Update the grid array with the new position
-  }
-  // Else lock the piece in place and check for line clears
-  else {
-    // If piece cannot move down and player does not want to hold or rotate or move, lock the piece in place
-    lockPiece(currentPiece); // Lock the piece in place
+    currentPosition.y -= 1;
+    currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
+  } else {
+    lockPiece(currentPiece);
     checkForLineClears();
-    updateCurrentPiece(); // Get the next piece
-}
+    updateCurrentPiece();
+  }
 }
 
-function lockPiece(piece) {
-  console.log("Locking piece in place");
-  // Check if player wants to hold or rotate or move within grace period
-  // If player wants to hold or rotate or move, do not lock the piece in place
-  // If not, lock the piece in place
-  // Update the grid array with the piece's position
-  // Create a clone of the piece at the position in the grid
-  const piecePosition = piece.position.clone(); // Clone the position of the piece
-  const pieceGeometry = piece.geometry.clone(); // Clone the geometry of the piece
-  const pieceMaterial = piece.material.clone(); // Clone the material of the piece
-  const lockedPiece = new THREE.Mesh(pieceGeometry, pieceMaterial); // Create a new mesh with the cloned geometry and material
-  lockedPiece.position.copy(piecePosition); // Set the position of the locked piece
-  lockedPiece.updateMatrixWorld(); // Update the matrix world of the locked piece
-  scene.add(lockedPiece); // Add the locked piece to the scene
-  // Check for line clears
-  checkForLineClears();
-  // Check for game over
-  if (lockedPiece.position.y > 210) {
-    console.log("lockedPiece position: " + lockedPiece.position.x + ", " + lockedPiece.position.y); // Log the position of the locked piece
-    gameOver = true; // Set game over flag
-    console.log("Game Over!"); // Log game over message
-  }
+function lockPiece(pieceGroup) {
+  pieceGroup.children.forEach(cube => {
+    const worldPos = new THREE.Vector3();
+    cube.getWorldPosition(worldPos);
+    const { row, col } = positionToGridIndex(worldPos.x, worldPos.y);
+
+    if (col >= 0 && col < GRID_COLS && row >= 0 && row < GRID_ROWS) {
+      setGridCell(row, col, cube);
+    }
+  });
 }
+
 
 function updateCurrentPiece() {
     // Get a new piece
@@ -401,74 +407,71 @@ function updateCurrentPiece() {
 }
 
 function checkForLineClears() {
-
+  for (let row = 0; row < GRID_ROWS; row++) {
+    const isFull = gridArray[row].every(cell => cell !== null);
+    if (isFull) {
+      clearRow(row, scene);
+      shiftRowsDown(row);
+      row--; // Check the same row again since it was replaced
+    }
+  }
 }
 
+
 function resetGame() {
-  // Reset the grid and UI elements here
+  if (holdPreview) scene.remove(holdPreview);
+  if (nextPreview) scene.remove(nextPreview);
 
-  // Clear the UI elements (e.g., score, level, lines cleared) here
-  // Update the UI elements to reflect the reset state
-  // Remove hold and next pieces from the scene
-  if (holdPreview) {
-    scene.remove(holdPreview);
-  }
-  if (nextPreview) {
-    scene.remove(nextPreview);
-  }
-
-  // Reset game state variables
   gameOver = false;
   score = 0;
   linesCleared = 0;
   lastDropTime = Date.now();
   isHolding = false;
 
-  // Clear the grid array
-  for (let row = 0; row < grid.length; row++) {
-    for (let col = 0; col < grid[row].length; col++) {
-      grid[row][col] = 0;
+  for (let row = 0; row < GRID_ROWS; row++) {
+    for (let col = 0; col < GRID_COLS; col++) {
+      if (gridArray[row][col]) {
+        scene.remove(gridArray[row][col]);
+        gridArray[row][col] = null;
+      }
     }
   }
 
-  // currentPiece
-  currentPiece = getRandomPiece(); // Get a new random piece
-  currentPiece.position.copy(snapToGrid(4, 20)); // Start position for the piece
+  currentPiece = getRandomPiece();
+  currentPiece.position.copy(snapToGrid(4, 19));
   console.log("Current piece position: " + currentPiece.position.x + ", " + currentPiece.position.y);
-  scene.add(currentPiece); // Add the current piece to the scene
-  updateArray(currentPiece); // Update the grid array with the current piece
+  scene.add(currentPiece);
 
-  // holdPiece
   holdPiece = null;
-  
-  // nextPiece
-  nextPiece = getRandomPiece(); // Get a new random piece
-  nextPreview = nextPiece.clone(); // Clone the next piece for preview
-  nextPreview.position.copy(centerOfNextBox()); // Position the next piece in the next box
-  nextPreview.scale.set(0.75, 0.75, 0.75); // Scale down the preview piece
-  scene.add(nextPreview); // Add the next piece to the scene
+  nextPiece = getRandomPiece();
+  nextPreview = nextPiece.clone();
+  nextPreview.position.copy(centerOfNextBox());
+  nextPreview.scale.set(0.75, 0.75, 0.75);
+  scene.add(nextPreview);
 
-  // Start the game loop
   requestAnimationFrame(gameLoop);
+  console.log("Game started!"); // Log game start
 }
 
 // =========== Game Loop ============ //
 function gameLoop() {
-  if (gameOver){
-    // Display game over message and stop the game loop
-    const gameOverText = `Game Over!: Press Space to Restart`;
-    const gameOverTextGeo = new THREE.TextGeometry(gameOverText, {
-      font: new THREE.FontLoader().parse('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json'),
+  if (gameOver) {
+    if (!loadedFont) return; // Wait for font to load
+  
+    const gameOverTextGeo = new THREE.TextGeometry("Game Over!: Press Space to Restart", {
+      font: loadedFont,
       size: 20,
       height: 2,
     });
     const gameOverTextMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const gameOverTextMesh = new THREE.Mesh(gameOverTextGeo, gameOverTextMat);
-    gameOverTextMesh.position.set(-150, -5, 26); // centered X, Y slightly above backdrop
-    scene.add(gameOverTextMesh); // Add game over text to the scene
-    reseetOnSpace(); // Wait for player to press space to restart
-    return; // Stop the game loop
+    gameOverTextMesh.position.set(-150, -5, 26);
+    scene.add(gameOverTextMesh);
+  
+    resetOnSpace();
+    return;
   }
+  
 
   // Check if it's time to drop the piece
   const now = Date.now();
@@ -487,24 +490,23 @@ function gameLoop() {
 
 // ============ Event Listeners ============ //
 //On page initialization, wait for player to press space to start the game
-function reseetOnSpace() {
-  document.addEventListener("keydown", function (event) {
-    if (event.code === "Space") {
-      // Start the game logic here
-      console.log("Game started!");
-      // Remove the start text and start backdrop
-      scene.remove(scene.children.find(child => child.type === "Mesh" && child.geometry.type === "PlaneGeometry" && child.position.z === 24)); // remove start backdrop
-      scene.remove(scene.children.find(child => child.type === "Mesh" && child.geometry.type === "TextGeometry" && child.position.z === 26)); // remove start text
-      // Remove the event listener to prevent multiple triggers
-      document.removeEventListener("keydown", arguments.callee);
-      // You can add your game logic here, such as starting the Tetris game loop
-      // or initializing the game state.
-      resetGame(); // Reset the game state
-    }
-  });
+
+function handleStartKey(event) {
+  if (event.code === "Space") {
+    console.log("Game started!");
+    scene.remove(scene.children.find(child => child.type === "Mesh" && child.geometry.type === "PlaneGeometry" && child.position.z === 24));
+    scene.remove(scene.children.find(child => child.type === "Mesh" && child.geometry.type === "TextGeometry" && child.position.z === 26));
+    document.removeEventListener("keydown", handleStartKey);
+    resetGame();
+  }
 }
 
-reseetOnSpace(); // Call the function to set up the event listener
+function resetOnSpace() {
+  document.addEventListener("keydown", handleStartKey);
+}
+
+
+resetOnSpace(); // Call the function to set up the event listener
 
 // Handle keydown events for controls
 
