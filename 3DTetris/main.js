@@ -393,6 +393,16 @@ function handleHoldPiece() {
     // reset current position
     currentPosition.x = 4;
     currentPosition.y = 19;
+    for (let cube of currentPiece.children) {
+      const { x: offsetX, y: offsetY } = cube.userData.offset;
+      const col = currentPosition.x + offsetX;
+      const row = currentPosition.y + offsetY;
+      // if any of the cubes are out of bounds, shift the whole piece down
+      if (row > GRID_ROWS - 1) {
+        currentPosition.y -= 1;
+        currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
+      }
+    }
     nextPreview = nextPiece.clone();
     nextPreview.position.copy(centerOfNextBox());
     nextPreview.scale.set(0.75, 0.75, 0.75);
@@ -425,7 +435,6 @@ function canMoveTo(newX, newY) {
     ) {
       return false;
     }
-    
   }
   return true;
 }
@@ -433,16 +442,13 @@ function canMoveTo(newX, newY) {
 
 
 
-function lockPiece(pieceGroup) {
-  for (let cube of pieceGroup.children) {
+function lockPiece() {
+  for (let cube of currentPiece.children) {
     const { x: offsetX, y: offsetY } = cube.userData.offset;
     const col = currentPosition.x + offsetX;
     const row = currentPosition.y + offsetY;
-
-    if (col >= 0 && col < GRID_COLS && row >= 0 && row < GRID_ROWS) {
-      scene.attach(cube); // ✅ This freezes its position by reparenting it to the scene
-      setGridCell(row, col, cube);      
-    }
+    console.log(`Lock cube position: ${cube.position}, Grid position: (${col}, ${row})`);
+    setGridCell(row, col, cube);
   }
 }
 
@@ -506,7 +512,7 @@ function dropPiece() {
     currentPosition.y -= 1;
     currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
   } else {
-    lockPiece(currentPiece);
+    lockPiece();
     checkForLineClears();
     updateCurrentPiece();
   }
@@ -531,6 +537,16 @@ function updateCurrentPiece() {
   currentPiece.position.copy(snapToGrid(4, 19));
   currentPosition.x = 4;
   currentPosition.y = 19;
+  for (let cube of currentPiece.children) {
+    const { x: offsetX, y: offsetY } = cube.userData.offset;
+    const col = currentPosition.x + offsetX;
+    const row = currentPosition.y + offsetY;
+    // if any of the cubes are out of bounds, shift the whole piece down
+    if (row > GRID_ROWS - 1) {
+      currentPosition.y -= 1;
+      currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
+    }
+  }
   // remove old next piece and preview
   scene.remove(nextPreview);
   nextPiece = getRandomPiece();
@@ -574,7 +590,18 @@ function resetGame() {
 
   currentPiece = getRandomPiece();
   currentPiece.position.copy(snapToGrid(4, 19));
+  for (let cube of currentPiece.children) {
+    const { x: offsetX, y: offsetY } = cube.userData.offset;
+    const col = currentPosition.x + offsetX;
+    const row = currentPosition.y + offsetY;
+    // if any of the cubes are out of bounds, shift the whole piece down
+    if (row > GRID_ROWS - 1) {
+      currentPosition.y -= 1;
+      currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
+    }
+  }
   scene.add(currentPiece);
+
 
   holdPiece = null;
   nextPiece = getRandomPiece();
@@ -584,7 +611,6 @@ function resetGame() {
   scene.add(nextPreview);
 
   requestAnimationFrame(gameLoop);
-  console.log("Game started!"); // Log game start
 
   document.addEventListener("keydown", handleGameplayKeys);
 }
