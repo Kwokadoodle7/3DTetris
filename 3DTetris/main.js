@@ -153,9 +153,11 @@ nextTextLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typef
 // ============ All Tetris Blocks ============ //
 function createBlock(material, xOffset, yOffset) {
   const cube = new THREE.Mesh(new THREE.BoxGeometry(CELL_SIZE, CELL_SIZE, 20), material);
+  cube.userData.offset = { x: xOffset, y: yOffset };
   cube.position.set(xOffset * CELL_SIZE, yOffset * CELL_SIZE, 0);
   return cube;
 }
+
 
 function createIBlock() {
   const mat = new THREE.MeshStandardMaterial({ color: 0x00ffff });
@@ -356,70 +358,19 @@ function getRandomPiece() {
   return piece;
 }
 
-
-function rotatePiece() {
-  // Define rotation pivot for each shape
-  // Format: [x, y] in local grid units
-  const rotationCenters = {
-    I: [1.5, 0.5],
-    J: [1, 1],
-    L: [1, 1],
-    O: [0.5, 0.5], // doesn't rotate, so we can skip later
-    S: [1, 1],
-    T: [1, 1],
-    Z: [1, 1],
+function getBlockType(piece) {
+  const color = piece.children[0].material.color.getHex();
+  const colorMap = {
+    0x00ffff: 'I',
+    0x0000ff: 'J',
+    0xef8a00: 'L',
+    0xffff00: 'O',
+    0x00ff00: 'S',
+    0x800080: 'T',
+    0xff0000: 'Z',
   };
-
-  // Detect piece type from material color (you can improve this with a `type` property later)
-  const color = currentPiece.children[0].material.color.getHex();
-  const typeByColor = {
-    0x00ffff: "I",
-    0x0000ff: "J",
-    0xef8a00: "L",
-    0xffff00: "O",
-    0x00ff00: "S",
-    0x800080: "T",
-    0xff0000: "Z",
-  };
-
-  const pieceType = typeByColor[color];
-  if (!pieceType || pieceType === "O") return; // No rotation for O block
-
-  const [pivotX, pivotY] = rotationCenters[pieceType];
-
-  // Save original positions in case we need to revert
-  const originalPositions = currentPiece.children.map(cube => cube.position.clone());
-
-  // Apply rotation relative to pivot
-  currentPiece.children.forEach(cube => {
-    let x = cube.position.x / CELL_SIZE;
-    let y = cube.position.y / CELL_SIZE;
-
-    // Translate to origin relative to pivot
-    x -= pivotX;
-    y -= pivotY;
-
-    // Rotate: (x, y) → (y, -x)
-    let rotatedX = y;
-    let rotatedY = -x;
-
-    // Translate back
-    rotatedX += pivotX;
-    rotatedY += pivotY;
-
-    cube.position.set(rotatedX * CELL_SIZE, rotatedY * CELL_SIZE, 0);
-  });
-
-  // Validate rotated position
-  if (!canMoveTo(currentPosition.x, currentPosition.y)) {
-    currentPiece.children.forEach((cube, i) => {
-      cube.position.copy(originalPositions[i]);
-    });
-  } else {
-    currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
-  }
+  return colorMap[color];
 }
-
 
 
 function handleHoldPiece() {
@@ -461,22 +412,38 @@ function handleHoldPiece() {
 // check using the grid array if the piece can move to the new position (edit parameters)
 function canMoveTo(newX, newY) {
   for (let cube of currentPiece.children) {
-    const offset = cube.position.clone().divideScalar(CELL_SIZE);
-    const col = newX + Math.round(offset.x);
-    const row = newY + Math.round(offset.y);
+    // Compute new world position for the cube
+    const offset = cube.userData.offset;
+    const cubePosition = snapToGrid(newX + offset.x, newY + offset.y);  // Get world position of this cube
+    const { row, col } = positionToGridIndex(cubePosition.x, cubePosition.y);
 
-    // Check bounds
-    if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) {
+    
+    if (
+      row < 0 || row >= GRID_ROWS ||
+      col < 0 || col >= GRID_COLS ||
+      isCellOccupied(row, col)
+    ) {
       return false;
     }
+    
+  }
+  return true;
+}
 
-    // Check collision
-    if (isCellOccupied(row, col)) {
-      return false;
+
+
+
+function lockPiece(pieceGroup) {
+  for (let cube of pieceGroup.children) {
+    const { x: offsetX, y: offsetY } = cube.userData.offset;
+    const col = currentPosition.x + offsetX;
+    const row = currentPosition.y + offsetY;
+
+    if (col >= 0 && col < GRID_COLS && row >= 0 && row < GRID_ROWS) {
+      scene.attach(cube); // ✅ This freezes its position by reparenting it to the scene
+      setGridCell(row, col, cube);      
     }
   }
-
-  return true;
 }
 
 function movePiece(direction) {
@@ -486,6 +453,50 @@ function movePiece(direction) {
   if (canMoveTo(newX, currentPosition.y)) {
     currentPosition.x = newX;
     currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
+  }
+}
+
+function rotatePiece() {
+  if (!currentPiece || !currentPiece.children.length) return;
+
+  const center = currentPiece.children[0].position.clone(); // This will be replaced depending on block type
+
+  // For each block type, we define an offset center manually
+  const blockType = getBlockType(currentPiece); // Helper function you'll add
+  let pivotOffset = new THREE.Vector3();
+
+  switch (blockType) {
+    case 'T':
+    case 'L':
+    case 'J':
+    case 'S':
+    case 'Z':
+      pivotOffset.set(CELL_SIZE, CELL_SIZE, 0); break;
+    case 'I':
+      pivotOffset.set(CELL_SIZE * 1.5, CELL_SIZE * 0.5, 0); break; // I uses a non-integer pivot in SRS
+    default:
+      return; // O doesn't rotate
+  }
+
+  const pivot = currentPiece.position.clone().add(pivotOffset);
+
+  const originalPositions = currentPiece.children.map(c => c.position.clone());
+
+  currentPiece.children.forEach(cube => {
+    const dx = cube.position.x - pivot.x;
+    const dy = cube.position.y - pivot.y;
+
+    const rotatedX = -dy;
+    const rotatedY = dx;
+
+    cube.position.x = pivot.x + rotatedX;
+    cube.position.y = pivot.y + rotatedY;
+  });
+
+  if (!canMoveTo(currentPosition.x, currentPosition.y)) {
+    currentPiece.children.forEach((cube, i) => {
+      cube.position.copy(originalPositions[i]);
+    });
   }
 }
 
@@ -505,23 +516,14 @@ function hardDropPiece() {
   while (canMoveTo(currentPosition.x, currentPosition.y - 1)) {
     currentPosition.y -= 1;
   }
+
   currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
   lockPiece(currentPiece);
   checkForLineClears();
   updateCurrentPiece();
 }
 
-function lockPiece(pieceGroup) {
-  pieceGroup.children.forEach(cube => {
-    const worldPos = new THREE.Vector3();
-    cube.getWorldPosition(worldPos);
-    const { row, col } = positionToGridIndex(worldPos.x, worldPos.y);
 
-    if (col >= 0 && col < GRID_COLS && row >= 0 && row < GRID_ROWS) {
-      setGridCell(row, col, cube);
-    }
-  });
-}
 
 
 function updateCurrentPiece() {

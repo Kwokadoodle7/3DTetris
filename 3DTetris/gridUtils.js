@@ -55,6 +55,13 @@ function shiftRowsDown(startRow) {
   }
 }
 
+// Convert (col, row) grid coordinates to world (x, y)
+function gridToWorldPosition(col, row) {
+  const x = -GRID_WIDTH / 2 + col * CELL_SIZE + CELL_SIZE / 2;
+  const y = -GRID_HEIGHT / 2 + row * CELL_SIZE + CELL_SIZE / 2;
+  return { x, y };
+}
+
 // Export utilities
 export default {
   gridArray,
