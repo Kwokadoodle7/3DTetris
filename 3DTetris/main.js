@@ -373,7 +373,9 @@ function handleHoldPiece() {
     holdPiece = currentPiece;
     currentPiece = nextPiece;
     currentPiece.position.copy(snapToGrid(4, 19));
-    nextPiece = getRandomPiece();
+    // reset current position
+    currentPosition.x = 4;
+    currentPosition.y = 19;
     nextPreview = nextPiece.clone();
     nextPreview.position.copy(centerOfNextBox());
     nextPreview.scale.set(0.75, 0.75, 0.75);
@@ -457,12 +459,18 @@ function lockPiece(pieceGroup) {
 
 
 function updateCurrentPiece() {
-    // Get a new piece
-    currentPiece = nextPiece; // Set the current piece to the next piece
-    console.log("updateCurrentPiece position:" + currentPiece.position.x + ", " + currentPiece.position.y); // Log the position of the current piece
-    currentPiece.position.copy(snapToGrid(4, 20)); // Start position for the piece
-    // Reset current position
-
+  currentPiece = nextPiece;
+  currentPiece.position.copy(snapToGrid(4, 19));
+  currentPosition.x = 4;
+  currentPosition.y = 19;
+  // remove old next piece and preview
+  scene.remove(nextPreview);
+  nextPiece = getRandomPiece();
+  nextPreview = nextPiece.clone();
+  nextPreview.position.copy(centerOfNextBox());
+  nextPreview.scale.set(0.75, 0.75, 0.75);
+  scene.add(nextPreview);
+  scene.add(currentPiece);
 }
 
 function checkForLineClears() {
