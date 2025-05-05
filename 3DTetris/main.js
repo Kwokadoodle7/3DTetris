@@ -397,41 +397,60 @@ function getBlockType(piece) {
 
 
 function handleHoldPiece() {
-  if (isHolding) return; // prevent multiple holds per drop
+  if (isHolding) return;
   isHolding = true;
 
   scene.remove(currentPiece);
+
   if (holdPiece) {
-    // Swap
+    // Swap current and hold
     const temp = holdPiece;
     holdPiece = currentPiece;
     currentPiece = temp;
+  
+    // Reset state
+    currentRotation = 0;
+    lastDropTime = Date.now();
+    currentPosition = { x: 4, y: 19 };
+  
+    // Reset offsets and positions
+    currentPiece.rotation.set(0, 0, 0);
+    currentPiece.children.forEach(cube => {
+      const offset = cube.userData.offset;
+      cube.position.set(offset.x * CELL_SIZE, offset.y * CELL_SIZE, 0);
+    });
+  
     currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
     scene.add(currentPiece);
+  
   } else {
-    // Store first piece and get a new one
+    // Store first piece and use next
     holdPiece = currentPiece;
     currentPiece = nextPiece;
-    currentPiece.position.copy(snapToGrid(4, 19));
-    // reset current position
-    currentPosition.x = 4;
-    currentPosition.y = 19;
-    for (let cube of currentPiece.children) {
-      const { x: offsetX, y: offsetY } = cube.userData.offset;
-      const col = currentPosition.x + offsetX;
-      const row = currentPosition.y + offsetY;
-      // if any of the cubes are out of bounds, shift the whole piece down
-      if (row > GRID_ROWS - 1) {
-        currentPosition.y -= 1;
-        currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
-      }
-    }
+    nextPiece = getRandomPiece();
+
+    // Update next preview
+    if (nextPreview) scene.remove(nextPreview);
     nextPreview = nextPiece.clone();
     nextPreview.position.copy(centerOfNextBox());
     nextPreview.scale.set(0.75, 0.75, 0.75);
     scene.add(nextPreview);
-    scene.add(currentPiece);
   }
+
+  // Reset state
+  currentRotation = 0;
+  lastDropTime = Date.now();
+  currentPosition = { x: 4, y: 19 };
+
+  // Restore child positions
+  currentPiece.children.forEach(cube => {
+    const offset = cube.userData.offset;
+    cube.position.set(offset.x * CELL_SIZE, offset.y * CELL_SIZE, 0);
+  });
+
+  currentPiece.rotation.set(0, 0, 0);
+  currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
+  scene.add(currentPiece);
 
   // Update hold preview
   if (holdPreview) scene.remove(holdPreview);
@@ -576,17 +595,20 @@ function updateCurrentPiece() {
   currentPiece.position.copy(snapToGrid(4, 19));
   currentPosition.x = 4;
   currentPosition.y = 19;
+
+  // Allow hold again for the new piece
+  isHolding = false;
+
   for (let cube of currentPiece.children) {
     const { x: offsetX, y: offsetY } = cube.userData.offset;
     const col = currentPosition.x + offsetX;
     const row = currentPosition.y + offsetY;
-    // if any of the cubes are out of bounds, shift the whole piece down
     if (row > GRID_ROWS - 1) {
       currentPosition.y -= 1;
       currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
     }
   }
-  // remove old next piece and preview
+
   scene.remove(nextPreview);
   nextPiece = getRandomPiece();
   nextPreview = nextPiece.clone();
@@ -595,6 +617,7 @@ function updateCurrentPiece() {
   scene.add(nextPreview);
   scene.add(currentPiece);
 }
+
 
 function checkForLineClears() {
   for (let row = 0; row < GRID_ROWS; row++) {
