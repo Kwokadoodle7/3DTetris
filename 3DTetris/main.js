@@ -300,6 +300,29 @@ scoreTextLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.type
 
 });
 
+const SRS_KICKS = {
+  'JLSTZ': {
+    '0->1': [ [0, 0], [-1, 0], [-1, +1], [0, -2], [-1, -2] ],
+    '1->0': [ [0, 0], [+1, 0], [+1, -1], [0, +2], [+1, +2] ],
+    '1->2': [ [0, 0], [+1, 0], [+1, -1], [0, +2], [+1, +2] ],
+    '2->1': [ [0, 0], [-1, 0], [-1, +1], [0, -2], [-1, -2] ],
+    '2->3': [ [0, 0], [+1, 0], [+1, +1], [0, -2], [+1, -2] ],
+    '3->2': [ [0, 0], [-1, 0], [-1, -1], [0, +2], [-1, +2] ],
+    '3->0': [ [0, 0], [-1, 0], [-1, -1], [0, +2], [-1, +2] ],
+    '0->3': [ [0, 0], [+1, 0], [+1, +1], [0, -2], [+1, -2] ],
+  },
+  'I': {
+    '0->1': [ [0, 0], [-2, 0], [+1, 0], [-2, -1], [+1, +2] ],
+    '1->0': [ [0, 0], [+2, 0], [-1, 0], [+2, +1], [-1, -2] ],
+    '1->2': [ [0, 0], [-1, 0], [+2, 0], [-1, +2], [+2, -1] ],
+    '2->1': [ [0, 0], [+1, 0], [-2, 0], [+1, -2], [-2, +1] ],
+    '2->3': [ [0, 0], [+2, 0], [-1, 0], [+2, +1], [-1, -2] ],
+    '3->2': [ [0, 0], [-2, 0], [+1, 0], [-2, -1], [+1, +2] ],
+    '3->0': [ [0, 0], [+1, 0], [-2, 0], [+1, -2], [-2, +1] ],
+    '0->3': [ [0, 0], [-1, 0], [+2, 0], [-1, +2], [+2, -1] ]
+  }
+};
+
 // Placement functions
 function snapToGrid(col, row) {
   const x = -GRID_WIDTH / 2 + col * CELL_SIZE + CELL_SIZE / 2;
@@ -462,46 +485,65 @@ function movePiece(direction) {
   }
 }
 
-function rotatePiece() {
+function rotatePiece(clockwise = true) {
   if (!currentPiece || !currentPiece.children.length) return;
 
-  const center = currentPiece.children[0].position.clone(); // This will be replaced depending on block type
+  const blockType = getBlockType(currentPiece);
+  if (blockType === 'O') return;
 
-  // For each block type, we define an offset center manually
-  const blockType = getBlockType(currentPiece); // Helper function you'll add
-  let pivotOffset = new THREE.Vector3();
+  const oldRotation = currentRotation;
+  const newRotation = (oldRotation + (clockwise ? 1 : 3)) % 4;
+  const rotationKey = `${oldRotation}->${newRotation}`;
+  const kickTable = SRS_KICKS[blockType === 'I' ? 'I' : 'JLSTZ'][rotationKey];
 
-  switch (blockType) {
-    case 'T':
-    case 'L':
-    case 'J':
-    case 'S':
-    case 'Z':
-      pivotOffset.set(CELL_SIZE, CELL_SIZE, 0); break;
-    case 'I':
-      pivotOffset.set(CELL_SIZE * 1.5, CELL_SIZE * 0.5, 0); break; // I uses a non-integer pivot in SRS
-    default:
-      return; // O doesn't rotate
-  }
+  const originalOffsets = currentPiece.children.map(cube => ({ ...cube.userData.offset }));
 
-  const pivot = currentPiece.position.clone().add(pivotOffset);
+  for (let [dx, dy] of kickTable) {
+    // Determine the pivot point (usually (1,1) for JLSTZ, (1.5,1.5) for I)
+    let pivot = { x: 1, y: 1 };
+    if (blockType === 'I') {
+      pivot = { x: 1.5, y: 1.5 };  // For I blocks in a 4x4 grid
+    }
 
-  const originalPositions = currentPiece.children.map(c => c.position.clone());
+    // Rotate each cube's offset around the pivot
+    currentPiece.children.forEach(cube => {
+      const { x, y } = cube.userData.offset;
 
-  currentPiece.children.forEach(cube => {
-    const dx = cube.position.x - pivot.x;
-    const dy = cube.position.y - pivot.y;
+      // Translate to origin (relative to pivot)
+      const relX = x - pivot.x;
+      const relY = y - pivot.y;
 
-    const rotatedX = -dy;
-    const rotatedY = dx;
+      // Apply rotation
+      const rotX = clockwise ? -relY : relY;
+      const rotY = clockwise ?  relX : -relX;
 
-    cube.position.x = pivot.x + rotatedX;
-    cube.position.y = pivot.y + rotatedY;
-  });
+      // Translate back
+      cube.userData.offset.x = rotX + pivot.x;
+      cube.userData.offset.y = rotY + pivot.y;
+    });
 
-  if (!canMoveTo(currentPosition.x, currentPosition.y)) {
+
+    const testX = currentPosition.x + dx;
+    const testY = currentPosition.y + dy;
+
+    if (canMoveTo(testX, testY)) {
+      currentPosition.x = testX;
+      currentPosition.y = testY;
+      currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
+
+      // Reposition children based on new offsets
+      currentPiece.children.forEach(cube => {
+        const { x: ox, y: oy } = cube.userData.offset;
+        cube.position.set(ox * CELL_SIZE, oy * CELL_SIZE, 0);
+      });
+
+      currentRotation = newRotation;
+      return;
+    }
+
+    // Revert offsets if kick fails
     currentPiece.children.forEach((cube, i) => {
-      cube.position.copy(originalPositions[i]);
+      cube.userData.offset = { ...originalOffsets[i] };
     });
   }
 }
@@ -528,9 +570,6 @@ function hardDropPiece() {
   checkForLineClears();
   updateCurrentPiece();
 }
-
-
-
 
 function updateCurrentPiece() {
   currentPiece = nextPiece;
@@ -690,7 +729,10 @@ function handleGameplayKeys(event) {
       hardDropPiece();
       break;
     case "KeyW":
-      rotatePiece();
+      rotatePiece(true); // Clockwise
+      break;
+    case "KeyQ":
+      rotatePiece(false); // Counterclockwise (optional)
       break;
     case "KeyC":
     case "ShiftLeft":
