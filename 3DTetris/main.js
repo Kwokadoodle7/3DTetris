@@ -297,7 +297,7 @@ scoreTextLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.type
   });
   const scoreTextMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
   scoreTextMesh = new THREE.Mesh(scoreTextGeo, scoreTextMat);
-  scoreTextMesh.position.set(-50, 220, 0);
+  scoreTextMesh.position.set(-50, 250, 0);
   scene.add(scoreTextMesh);
 });
 
@@ -314,7 +314,7 @@ function updateScoreText() {
   });
   const scoreTextMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
   scoreTextMesh = new THREE.Mesh(scoreTextGeo, scoreTextMat);
-  scoreTextMesh.position.set(-50, 220, 0);
+  scoreTextMesh.position.set(-50, 250, 0);
   scene.add(scoreTextMesh);
 }
 
@@ -527,6 +527,7 @@ function lockPiece() {
     if (cube) {
       cube.position.copy(snapToGrid(col, row));
       scene.add(cube); // Add the cube back to the scene
+      console.log("Adding cube at row: " + row + " col: " + col);
     }
   }
   scene.remove(currentPiece);
@@ -640,9 +641,25 @@ function updateCurrentPiece() {
     const { x: offsetX, y: offsetY } = cube.userData.offset;
     const col = currentPosition.x + offsetX;
     const row = currentPosition.y + offsetY;
-    if (row > GRID_ROWS - 1) {
+    if (row > GRID_ROWS - 1 && isCellOccupied(row, col)) {
       currentPosition.y -= 1;
       currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
+    } else if (isCellOccupied(row, col) === true) {
+      currentPosition.x = 4;
+      currentPosition.y = 20;
+      currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
+      // remove the cubes above the grid
+      for (let cube of currentPiece.children) {
+        const { x: offsetX, y: offsetY } = cube.userData.offset;
+        const col = currentPosition.x + offsetX;
+        const row = currentPosition.y + offsetY;
+        if (row > GRID_ROWS) {
+          console.log("Removing cube at row: " + row + " col: " + col);
+          
+        }
+      }
+      gameOver = true;
+      gameStarted = false;
     }
   }
 
@@ -690,6 +707,8 @@ function checkForLineClears() {
 function resetGame() {
   if (holdPreview) scene.remove(holdPreview);
   if (nextPreview) scene.remove(nextPreview);
+  if (nextPiece) scene.remove(nextPiece);
+  if (currentPiece) scene.remove(currentPiece);
 
   gameOver = false;
   score = 0;
@@ -730,7 +749,12 @@ function resetGame() {
 
   requestAnimationFrame(gameLoop);
 
+  document.removeEventListener("keydown", handleStartKey);
+
+  setTimeout(() => {
   document.addEventListener("keydown", handleGameplayKeys);
+  }, 100); // Delay to ensure the game is ready for input
+
 }
 
 // =========== Game Loop ============ //
@@ -745,11 +769,15 @@ function gameLoop() {
     });
     const gameOverTextMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const gameOverTextMesh = new THREE.Mesh(gameOverTextGeo, gameOverTextMat);
-    gameOverTextMesh.position.set(-150, -5, 26);
+    gameOverTextMesh.position.set(-200, -5, 26);
     scene.add(gameOverTextMesh);
-  
-    resetOnSpace();
-    return;
+    const gameOverBackdropGeo = new THREE.PlaneGeometry(500, 30);
+    const gameOverBackdropMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    const gameOverBackdrop = new THREE.Mesh(gameOverBackdropGeo, gameOverBackdropMat);
+    gameOverBackdrop.position.set(20, 5, 24); // same center, slightly behind
+    scene.add(gameOverBackdrop);
+    resetOnSpace(); // Reset event listener for restarting the game
+    return; // Exit the game loop
   }
   
 
@@ -784,7 +812,18 @@ function handleStartKey(event) {
 
 
 function resetOnSpace() {
-  document.addEventListener("keydown", handleStartKey);
+  document.addEventListener("keydown", function handleRestartKey(event) {
+    if (event.code === "Space" && !gameStarted) {
+      console.log("Game restarted!");
+      gameStarted = true;
+      scene.remove(scene.children.find(child => child.type === "Mesh" && child.geometry.type === "PlaneGeometry" && child.position.z === 24));
+      scene.remove(scene.children.find(child => child.type === "Mesh" && child.geometry.type === "TextGeometry" && child.position.z === 26));
+
+      document.removeEventListener("keydown", handleStartKey);
+      document.removeEventListener("keydown", handleRestartKey);
+      resetGame();
+    }
+  });
 }
 
 
