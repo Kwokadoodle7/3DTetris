@@ -527,7 +527,6 @@ function lockPiece() {
     if (cube) {
       cube.position.copy(snapToGrid(col, row));
       scene.add(cube); // Add the cube back to the scene
-      console.log("Adding cube at row: " + row + " col: " + col);
     }
   }
   scene.remove(currentPiece);
@@ -648,16 +647,6 @@ function updateCurrentPiece() {
       currentPosition.x = 4;
       currentPosition.y = 20;
       currentPiece.position.copy(snapToGrid(currentPosition.x, currentPosition.y));
-      // remove the cubes above the grid
-      for (let cube of currentPiece.children) {
-        const { x: offsetX, y: offsetY } = cube.userData.offset;
-        const col = currentPosition.x + offsetX;
-        const row = currentPosition.y + offsetY;
-        if (row > GRID_ROWS) {
-          console.log("Removing cube at row: " + row + " col: " + col);
-          
-        }
-      }
       gameOver = true;
       gameStarted = false;
     }
