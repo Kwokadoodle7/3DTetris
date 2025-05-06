@@ -412,6 +412,13 @@ function getBlockType(piece) {
   return colorMap[color];
 }
 
+function centerPreview(pieceGroup, offsetX = 0) {
+  const box = new THREE.Box3().setFromObject(pieceGroup);
+  const center = new THREE.Vector3();
+  box.getCenter(center);
+  pieceGroup.position.sub(center); // center at (0,0,0)
+  pieceGroup.position.x += offsetX; // nudge left or right
+}
 
 function handleHoldPiece() {
   if (isHolding) return;
@@ -449,7 +456,8 @@ function handleHoldPiece() {
     // Update next preview
     if (nextPreview) scene.remove(nextPreview);
     nextPreview = nextPiece.clone();
-    nextPreview.position.copy(centerOfNextBox());
+    centerPreview(nextPreview);
+    nextPreview.position.add(new THREE.Vector3(nextBox.position.x, nextBox.position.y, 25));      
     nextPreview.scale.set(0.75, 0.75, 0.75);
     scene.add(nextPreview);
   }
@@ -482,7 +490,8 @@ function handleHoldPiece() {
   // Update hold preview
   if (holdPreview) scene.remove(holdPreview);
   holdPreview = holdPiece.clone();
-  holdPreview.position.set(holdBox.position.x, holdBox.position.y, 25);
+  centerPreview(holdPreview);
+  holdPreview.position.add(new THREE.Vector3(holdBox.position.x, holdBox.position.y, 25));  
   holdPreview.scale.set(0.75, 0.75, 0.75);
   scene.add(holdPreview);
 }
@@ -507,9 +516,6 @@ function canMoveTo(newX, newY) {
   }
   return true;
 }
-
-
-
 
 function lockPiece() {
   let temporaryCoordList = [];
@@ -655,7 +661,8 @@ function updateCurrentPiece() {
   scene.remove(nextPreview);
   nextPiece = getRandomPiece();
   nextPreview = nextPiece.clone();
-  nextPreview.position.copy(centerOfNextBox());
+  centerPreview(nextPreview);
+  nextPreview.position.add(new THREE.Vector3(nextBox.position.x, nextBox.position.y, 25));  
   nextPreview.scale.set(0.75, 0.75, 0.75);
   scene.add(nextPreview);
   scene.add(currentPiece);
@@ -732,7 +739,8 @@ function resetGame() {
   holdPiece = null;
   nextPiece = getRandomPiece();
   nextPreview = nextPiece.clone();
-  nextPreview.position.copy(centerOfNextBox());
+  centerPreview(nextPreview);
+  nextPreview.position.add(new THREE.Vector3(nextBox.position.x, nextBox.position.y, 25));  
   nextPreview.scale.set(0.75, 0.75, 0.75);
   scene.add(nextPreview);
 
